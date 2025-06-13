@@ -1,10 +1,12 @@
 import express from "express"
 import { User, Order } from "../models/index.js"
 import { config } from "../config/env.js"
-import webhookRoutes from "../routes/webhook.js";
-router.use("/webhook", webhookRoutes);
+import webhookRoutes from "../routes/webhook.js"
 
 const router = express.Router()
+
+// Attach webhook routes first
+router.use("/webhook", webhookRoutes)
 
 // Authentication middleware
 const authenticateAdmin = (req, res, next) => {
