@@ -1,6 +1,8 @@
 import express from "express"
 import { User, Order } from "../models/index.js"
 import { config } from "../config/env.js"
+import webhookRoutes from "../routes/webhook.js";
+router.use("/webhook", webhookRoutes);
 
 const router = express.Router()
 
