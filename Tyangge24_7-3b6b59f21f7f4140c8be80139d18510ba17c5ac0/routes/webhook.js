@@ -4,7 +4,7 @@ import { bot } from "../bot/index.js"; // ✅ assuming bot instance is exported 
 
 const router = express.Router();
 
-router.post("/xendit", async (req, res) => {
+router.post("/", async (req, res) => {
   const event = req.body;
 
   try {
