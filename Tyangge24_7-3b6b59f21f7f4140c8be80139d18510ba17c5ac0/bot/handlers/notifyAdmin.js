@@ -10,7 +10,7 @@ export async function notifyAdmin(bot, pendingOrder) {
     .text("✅ Approve", `approve_${pendingOrder._id}`)
     .text("❌ Decline", `decline_${pendingOrder._id}`);
 
-  // Fetch resolved address if not already present
+  // Try to resolve address with reverse geocode if possible
   let resolvedAddress = pendingOrder.customerInfo?.location?.resolvedAddress;
   if (
     (!resolvedAddress || resolvedAddress === "📍 Unknown address") &&
@@ -49,16 +49,18 @@ export async function notifyAdmin(bot, pendingOrder) {
 
 // Setup admin callback handlers for order approval
 export function setupAdminCallbacks(bot) {
-  // Handles both approve and decline
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
     const [, action, pendingId] = ctx.match;
     const pendingOrder = await PendingOrderApproval.findById(pendingId);
 
     if (!pendingOrder) {
-      return await ctx.answerCallbackQuery({
-        text: "Pending order not found!",
-        show_alert: true,
-      });
+      try {
+        await ctx.answerCallbackQuery({
+          text: "Pending order not found!",
+          show_alert: true,
+        });
+      } catch (err) {}
+      return;
     }
 
     const userId = pendingOrder.telegramId;
@@ -83,7 +85,11 @@ export function setupAdminCallbacks(bot) {
         console.error("❌ Failed to send payment message:", err);
       }
 
-      await ctx.editMessageText("✅ Order approved and payment sent to customer!");
+      try {
+        await ctx.editMessageText("✅ Order approved and payment sent to customer!");
+      } catch (err) {
+        // Ignore if message already edited
+      }
     }
 
     if (action === "decline") {
@@ -98,9 +104,18 @@ export function setupAdminCallbacks(bot) {
         console.error("❌ Failed to send decline message:", err);
       }
 
-      await ctx.editMessageText("🚫 Order declined.");
+      try {
+        await ctx.editMessageText("🚫 Order declined.");
+      } catch (err) {
+        // Ignore if message already edited
+      }
     }
 
-    await ctx.answerCallbackQuery();
+    // Always try to answer the callback, but ignore timeout errors
+    try {
+      await ctx.answerCallbackQuery();
+    } catch (err) {
+      // Ignore all errors (mainly "query is too old")
+    }
   });
 }
