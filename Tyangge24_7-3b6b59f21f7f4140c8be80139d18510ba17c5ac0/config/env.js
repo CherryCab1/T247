@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 // Environment configuration
 export const config = {
   // Server
@@ -20,17 +23,17 @@ export const config = {
 
   // Payment
   XENDIT_API_KEY: process.env.XENDIT_API_KEY,
-}
+};
 
 // Validate required environment variables
 export function validateEnv() {
-  const required = ["BOT_TOKEN", "MONGO_URI", "ADMIN_CHAT_ID"]
-  const missing = required.filter((key) => !config[key])
+  const required = ["BOT_TOKEN", "MONGO_URI", "ADMIN_CHAT_ID"];
+  const missing = required.filter((key) => !config[key]);
 
   if (missing.length > 0) {
-    console.error("❌ Missing required environment variables:", missing)
-    process.exit(1)
+    console.error("❌ Missing required environment variables:", missing);
+    process.exit(1);
   }
 
-  console.log("✅ Environment variables validated")
+  console.log("✅ Environment variables validated");
 }
