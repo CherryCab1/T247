@@ -80,7 +80,15 @@ const orderSchema = new mongoose.Schema({
   total: Number,
   status: {
     type: String,
-    enum: ["pending_payment", "paid", "preparing", "en_route", "delivered", "cancelled"],
+    enum: [
+      "pending_payment",
+      "awaiting_payment", // Added to allow admin approval flow
+      "paid",
+      "preparing",
+      "en_route",
+      "delivered",
+      "cancelled"
+    ],
     default: "pending_payment",
     index: true,
   },
