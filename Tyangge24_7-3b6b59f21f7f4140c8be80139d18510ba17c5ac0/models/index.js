@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { PendingOrderApproval } from "./PendingOrderApproval.js";
+
 // User Schema
 const userSchema = new mongoose.Schema({
   telegramId: { type: Number, required: true, unique: true, index: true },
@@ -35,7 +36,7 @@ const userSchema = new mongoose.Schema({
     location: {
       latitude: Number,
       longitude: Number,
-      resolvedAddress: String, // ✅ Added for human-readable address
+      resolvedAddress: String,
     },
     addressNote: String,
     mobile: String,
@@ -56,8 +57,6 @@ const orderSchema = new mongoose.Schema({
   items: [
     {
       productId: String,
-⁰⁰⁰0p
-      
       productName: String,
       variantIndex: Number,
       variantName: String,
@@ -72,7 +71,7 @@ const orderSchema = new mongoose.Schema({
     location: {
       latitude: Number,
       longitude: Number,
-      resolvedAddress: String, // ✅ Also here for admin/delivery view
+      resolvedAddress: String,
     },
     addressNote: String,
   },
@@ -143,7 +142,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Create indexes for better performance
+// Create indexes
 userSchema.index({ telegramId: 1, status: 1 });
 orderSchema.index({ telegramId: 1, createdAt: -1 });
 chatLogSchema.index({ telegramId: 1, timestamp: -1 });
@@ -153,5 +152,4 @@ export const Order = mongoose.model("Order", orderSchema);
 export const ChatLog = mongoose.model("ChatLog", chatLogSchema);
 export const PendingApproval = mongoose.model("PendingApproval", pendingApprovalSchema);
 export const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema);
-export { PendingOrderApproval } from "./pendingOrderApproval.js";
-
+export { PendingOrderApproval };
