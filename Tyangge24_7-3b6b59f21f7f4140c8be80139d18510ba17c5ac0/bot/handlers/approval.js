@@ -9,13 +9,19 @@ export async function handleApproval(ctx) {
     return;
   }
 
-  const userId = ctx.match[1];
+  const userId = Number(ctx.match[1]);
 
   try {
     const pendingApproval = await PendingApproval.findOne({ telegramId: userId });
 
     if (!pendingApproval) {
       await ctx.answerCallbackQuery("Wala ko kakita sang user, bes!");
+      return;
+    }
+
+    const user = await User.findOne({ telegramId: userId });
+    if (!user) {
+      await ctx.answerCallbackQuery("Wala ko ya user sa database, bes!");
       return;
     }
 
@@ -39,7 +45,7 @@ export async function handleDenial(ctx) {
     return;
   }
 
-  const userId = ctx.match[1];
+  const userId = Number(ctx.match[1]);
 
   try {
     const pendingApproval = await PendingApproval.findOne({ telegramId: userId });
