@@ -1,11 +1,9 @@
 import { Keyboard } from "grammy";
-import { User, Order, PendingOrderApproval } from "../../models/index.js";
-import { createXenditPayment } from "../services/xendit.js";
+import { User, PendingOrderApproval } from "../../models/index.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { bot } from "../index.js"; // Import the bot instance
 import { generateOrderNumber } from "../utils/generateOrderNumber.js";
-
 
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
 export const loadingLoops = new Map();
@@ -230,20 +228,16 @@ export async function handleCheckoutCallback(ctx) {
       subtotal: user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
       deliveryFee: user.checkoutData.deliveryFee,
       total: user.checkoutData.grandTotal,
-      status: "pending_payment",
+      status: "pending_approval",
       paymentStatus: "pending",
     };
 
-    const order = new Order(orderData);
-    const pending = new PendingOrderApproval({
-      ...orderData,
-      status: "pending_approval",
-    });
-
-    await order.save();
+    // Save only to PendingOrderApproval collection
+    const pending = new PendingOrderApproval(orderData);
     await pending.save();
+
     await clearCheckoutState(user);
-    await notifyAdmin(bot, order, pending); // Pass bot as first argument
+    await notifyAdmin(bot, null, pending); // Pass null for order, pending for admin notification
     await ctx.answerCallbackQuery();
     return true;
   }
