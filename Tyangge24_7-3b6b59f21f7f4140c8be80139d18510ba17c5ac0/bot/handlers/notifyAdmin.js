@@ -1,9 +1,8 @@
-import { bot } from "../index.js";
 import { Order } from "../../models/index.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { createXenditPayment } from "../services/xendit.js";
 
-// Custom message summary for admin with reversed geocode
+// 🔹 Generate admin order summary
 async function generateAdminOrderSummary(order) {
   let text = "🛒 <b>NEW ORDER ALERT!</b>\n\n";
 
@@ -16,7 +15,6 @@ async function generateAdminOrderSummary(order) {
   text += `\n💅 Subtotal: ₱${order.subtotal}`;
   text += `\n🚚 Delivery Fee: ₱${order.deliveryFee}`;
   text += `\n\n💎 <b>GRAND TOTAL:</b> ₱${order.total}`;
-
   text += `\n\n👤 Pangalan: ${order.name}`;
   text += `\n📱 Number: ${order.mobile}`;
 
@@ -31,8 +29,9 @@ async function generateAdminOrderSummary(order) {
   return text;
 }
 
-// Send order to admin with approve/decline buttons
+// 🔹 Notify admin
 export async function notifyAdmin(user) {
+  const { bot } = await import("../index.js"); // Lazy import to fix circular issue
   const order = await Order.findOne({ userId: user.telegramId, status: "pending" });
   if (!order) return;
 
@@ -55,32 +54,33 @@ export async function notifyAdmin(user) {
   );
 }
 
-// Handle admin decisions
-bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
-  const [, action, orderId] = ctx.match;
-  const order = await Order.findById(orderId);
-  if (!order) return await ctx.answerCallbackQuery({ text: "Order not found!", show_alert: true });
+// 🔹 Admin decision handler
+export async function setupAdminCallbacks(bot) {
+  bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
+    const [, action, orderId] = ctx.match;
+    const order = await Order.findById(orderId);
+    if (!order) return await ctx.answerCallbackQuery({ text: "Order not found!", show_alert: true });
 
-  const userId = order.userId;
+    const userId = order.userId;
 
-  if (action === "approve") {
-    order.status = "awaiting_payment";
-    await order.save();
+    if (action === "approve") {
+      order.status = "awaiting_payment";
+      await order.save();
 
-    // Create payment link (QR or URL)
-    const payment = await createXenditPayment(order);
-    const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
+      const payment = await createXenditPayment(order.total, order.name, order.mobile);
+      const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
-    await bot.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
-    await ctx.editMessageText("✅ Order approved and payment sent to customer!");
-  }
+      await ctx.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
+      await ctx.editMessageText("✅ Order approved and payment sent to customer!");
+    }
 
-  if (action === "decline") {
-    order.status = "declined";
-    await order.save();
-    await bot.api.sendMessage(userId, "❌ Sorry, dai. Na-decline ni admin ang imo order. If this was a mistake, try again or contact us ha. 💔");
-    await ctx.editMessageText("🚫 Order declined.");
-  }
+    if (action === "decline") {
+      order.status = "declined";
+      await order.save();
+      await ctx.api.sendMessage(userId, "❌ Sorry, dai. Na-decline ni admin ang imo order. If this was a mistake, try again or contact us ha. 💔");
+      await ctx.editMessageText("🚫 Order declined.");
+    }
 
-  await ctx.answerCallbackQuery();
-});
+    await ctx.answerCallbackQuery();
+  });
+}
