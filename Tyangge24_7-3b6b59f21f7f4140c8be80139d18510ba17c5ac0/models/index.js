@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { PendingOrderApproval } from "./PendingOrderApproval.js";
+import { PendingOrderApproval } from "./pendingOrderApproval.js";
 
 // User Schema
 const userSchema = new mongoose.Schema({
