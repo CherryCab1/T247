@@ -3,6 +3,7 @@ import { User, Order, PendingOrderApproval } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
+import { bot } from "../index.js"; // Import the bot instance
 
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
 export const loadingLoops = new Map();
@@ -240,7 +241,7 @@ export async function handleCheckoutCallback(ctx) {
     await order.save();
     await pending.save();
     await clearCheckoutState(user);
-    await notifyAdmin(order, pending); // <-- pass both order and pending
+    await notifyAdmin(bot, order, pending); // Pass bot as first argument
     await ctx.answerCallbackQuery();
     return true;
   }
