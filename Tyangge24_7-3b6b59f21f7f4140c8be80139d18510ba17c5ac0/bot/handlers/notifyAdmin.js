@@ -1,5 +1,5 @@
 // admin.js
-import { Order } from "../../models/index.js";
+import { Order, PendingOrderApproval } from "../../models/index.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { createXenditPayment } from "../services/xendit.js";
 import { bot } from "../index.js";
@@ -37,8 +37,8 @@ async function generateAdminOrderSummary(order) {
   return text;
 }
 
-export async function notifyAdmin(order) {
-  const summary = await generateAdminOrderSummary(order);
+export async function notifyAdmin(pendingOrder) {
+  const summary = await generateAdminOrderSummary(pendingOrder);
   await bot.api.sendMessage(process.env.ADMIN_TELEGRAM_ID, summary, {
     parse_mode: "HTML",
     reply_markup: {
@@ -46,11 +46,11 @@ export async function notifyAdmin(order) {
         [
           {
             text: "✅ Approve & Send Payment",
-            callback_data: `approve_${order._id}`,
+            callback_data: `approve_${pendingOrder._id}`,
           },
           {
             text: "❌ Decline",
-            callback_data: `decline_${order._id}`,
+            callback_data: `decline_${pendingOrder._id}`,
           },
         ],
       ],
@@ -60,30 +60,32 @@ export async function notifyAdmin(order) {
 
 export function setupAdminCallbacks(bot) {
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
-    const [, action, orderId] = ctx.match;
-    const order = await Order.findById(orderId);
-    if (!order) {
+    const [, action, pendingId] = ctx.match;
+    const pendingOrder = await PendingOrderApproval.findById(pendingId);
+    if (!pendingOrder) {
       return await ctx.answerCallbackQuery({
-        text: "Order not found!",
+        text: "Pending order not found!",
         show_alert: true,
       });
     }
 
-    const userId = order.telegramId;
-    console.log("🔔 Trying to notify user", userId);
+    const userId = pendingOrder.telegramId;
 
     if (action === "approve") {
-      order.status = "awaiting_payment";
-      await order.save();
+      const newOrder = new Order({
+        ...pendingOrder.toObject(),
+        status: "awaiting_payment",
+      });
+      await newOrder.save();
+      await PendingOrderApproval.findByIdAndDelete(pendingId);
 
-      const payment = await createXenditPayment(order);
+      const payment = await createXenditPayment(newOrder);
       const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
       try {
         await bot.api.sendMessage(userId, paymentText, {
           parse_mode: "HTML",
         });
-        console.log("✅ Sent payment instructions to user!");
       } catch (err) {
         console.error("❌ Failed to send payment message:", err);
       }
@@ -92,8 +94,7 @@ export function setupAdminCallbacks(bot) {
     }
 
     if (action === "decline") {
-      order.status = "declined";
-      await order.save();
+      await PendingOrderApproval.findByIdAndDelete(pendingId);
 
       try {
         await bot.api.sendMessage(
