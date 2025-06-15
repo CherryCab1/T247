@@ -4,6 +4,8 @@ import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { bot } from "../index.js"; // Import the bot instance
+import { generateOrderNumber } from "../utils/generateOrderNumber.js";
+
 
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
 export const loadingLoops = new Map();
@@ -212,7 +214,7 @@ export async function handleCheckoutCallback(ctx) {
     const orderData = {
       telegramId: user.telegramId,
       username: ctx.from.username,
-      orderNumber: `ORD-${Date.now()}`,
+      orderNumber: generateOrderNumber(),
       items: user.cart,
       customerInfo: {
         name: user.checkoutData.name,
