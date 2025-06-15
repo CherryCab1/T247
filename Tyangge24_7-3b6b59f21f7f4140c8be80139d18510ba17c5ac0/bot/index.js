@@ -19,7 +19,6 @@ import { User } from "../models/index.js"
 import { PendingOrderApproval } from "../models/index.js";
 import { setupAdminCallbacks } from "./handlers/notifyAdmin.js"
 
-
 // 👑 Bot instance
 export const bot = new Bot(config.BOT_TOKEN)
 
@@ -88,7 +87,8 @@ bot.on("callback_query:data", async (ctx) => {
   if (handled) return
 })
 
-setupAdminCallbacks(bot)
+// ✅ Hook admin approve/decline after bot is ready
+setupAdminCallbacks(bot);
 
 // 🧯 Error handling
 bot.catch((err) => {
