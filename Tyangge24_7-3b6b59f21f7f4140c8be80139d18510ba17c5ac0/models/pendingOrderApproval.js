@@ -16,6 +16,6 @@ const PendingOrderApprovalSchema = new mongoose.Schema({
 });
 
 export const PendingOrderApproval = mongoose.model(
-  "PendingOrderApproval",
+  "pendingOrderApproval",
   PendingOrderApprovalSchema
 );
