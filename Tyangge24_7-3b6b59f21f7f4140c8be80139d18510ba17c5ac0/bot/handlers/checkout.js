@@ -236,21 +236,31 @@ export async function handleCheckoutCallback(ctx) {
     user.checkoutStep = "awaiting_admin_approval";
     await user.save();
 
-    // 👉 SAVE ORDER HERE
+    // ✅ Save properly formatted order
     const order = new Order({
       telegramId: user.telegramId,
-      userId: user.telegramId,
+      username: ctx.from.username,
+      orderNumber: `ORD-${Date.now()}`,
       items: user.cart,
-      status: "pending",
-      name: user.checkoutData.name,
-      mobile: user.checkoutData.mobile,
-      address: user.checkoutData.resolvedAddress,
-      addressNote: user.checkoutData.addressNote || "",
+      customerInfo: {
+        name: user.checkoutData.name,
+        deliveryMethod: "Delivery",
+        contact: user.checkoutData.mobile,
+        location: {
+          latitude: user.checkoutData.location.latitude,
+          longitude: user.checkoutData.location.longitude,
+          resolvedAddress: user.checkoutData.resolvedAddress,
+        },
+        addressNote: user.checkoutData.addressNote || "",
+      },
+      subtotal: user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      deliveryFee: user.checkoutData.deliveryFee,
       total: user.checkoutData.grandTotal,
-      createdAt: new Date(),
+      status: "pending_payment",
+      paymentStatus: "pending",
     });
-    await order.save();
 
+    await order.save();
     await notifyAdmin(user);
     await ctx.answerCallbackQuery();
     return true;
