@@ -1,5 +1,3 @@
-// helpers/emojiMap.js
-
 export function getEmoji(productName = "") {
   const map = {
     "Cock Ring": "🍩",
@@ -14,6 +12,7 @@ export function getEmoji(productName = "") {
     "Dildo": "🍆🌍",
     "Masturbator": "👄🍑",
     "Freshener": "👅🌬️",
+    "Ice Cube": "🧊",       // ← added!
     "Insulin": "💉",
     "Sterile Water": "💧",
   };
@@ -24,5 +23,5 @@ export function getEmoji(productName = "") {
     }
   }
 
-  return "📦"; // default fallback emoji
+  return "📦"; // fallback
 }
