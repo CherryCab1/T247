@@ -15,30 +15,37 @@ const headers = {
 }
 
 // 🔹 Generate QR Code (with fallback to paylink)
-export async function createXenditPayment(amount, name, mobile) {
+export async function createXenditPayment(amount, name, mobile, telegramId) {
   const external_id = `kutabare-${Date.now()}`
   const payload = {
     external_id,
     amount,
     description: `Order for ${name} (${mobile})`,
     currency: "PHP",
-    callback_url: process.env.XENDIT_CALLBACK_URL || "https://your-domain.com/webhook/xendit",
+    channel_code: "PH_QR_GENE", // ✅ Ensure QRPH is selected
+    callback_url: process.env.XENDIT_CALLBACK_URL || "https://tyangge24-7-1.onrender.com/webhook/xendit",
     type: "DYNAMIC",
-    channel_code: "PH_QR_PH",
   }
 
   try {
     const res = await axios.post("https://api.xendit.co/qr_codes", payload, { headers })
+
+    // ✅ Send QR to user
+    if (telegramId) {
+      await bot.api.sendMessage(telegramId, `📲 Scan this QR using Maya or any QRPH app:`)
+      await bot.api.sendPhoto(telegramId, res.data.qr_code)
+    }
+
     return { type: "qr", url: res.data.qr_code, xenditInvoiceId: res.data.id }
   } catch (error) {
     console.error("❌ Failed to create QR. Falling back to paylink:", error.response?.data || error.message)
-    const fallback = await createXenditPaylink(amount, name, mobile)
+    const fallback = await createXenditPaylink(amount, name, mobile, telegramId)
     return fallback
   }
 }
 
 // 🔹 Fallback: Payment Link
-async function createXenditPaylink(amount, name, mobile) {
+async function createXenditPaylink(amount, name, mobile, telegramId) {
   const external_id = `kutabare-paylink-${Date.now()}`
   const payload = {
     external_id,
@@ -46,11 +53,16 @@ async function createXenditPaylink(amount, name, mobile) {
     description: `Order for ${name} (${mobile})`,
     amount,
     currency: "PHP",
-    success_redirect_url: process.env.XENDIT_SUCCESS_URL || "https://your-domain.com/success",
-    failure_redirect_url: process.env.XENDIT_FAILURE_URL || "https://your-domain.com/failure",
+    success_redirect_url: process.env.XENDIT_SUCCESS_URL || "https://tyangge24-7-1.onrender.com/success",
+    failure_redirect_url: process.env.XENDIT_FAILURE_URL || "https://tyangge24-7-1.onrender.com/failure",
   }
 
   const res = await axios.post("https://api.xendit.co/payment_links", payload, { headers })
+
+  // ✅ Send Paylink to user
+  if (telegramId) {
+    await bot.api.sendMessage(telegramId, `💳 Click this to pay: ${res.data.invoice_url}`)
+  }
 
   return {
     type: "paylink",
