@@ -16,7 +16,7 @@ import { showProducts, viewProduct as showProductDetails } from "./handlers/prod
 import { addToCart, showCart, handleAddMore } from "./handlers/cart.js"
 import * as checkout from "./handlers/checkout.js"
 import { User } from "../models/index.js"
-import { PendingOrderApproval } from "../models/index.js";
+import { PendingOrderApproval } from "../models/index.js"
 import { setupAdminCallbacks } from "./handlers/notifyAdmin.js"
 
 // 👑 Bot instance
@@ -29,7 +29,11 @@ bot.use(logInteraction)
 bot.command("start", handleStart)
 bot.command("checkout", checkout.handleCheckout)
 
-// ✅ Approval Flow
+// ✅ ORDER Approval Flow (for orders with MongoDB _id)
+// Register this BEFORE user approval handlers!
+setupAdminCallbacks(bot)
+
+// ✅ USER Approval Flow (for approving/denying new users)
 bot.callbackQuery(/approve_(\d+)/, handleApproval)
 bot.callbackQuery(/deny_(\d+)/, handleDenial)
 bot.callbackQuery("agree_terms", handleTermsAgreement)
@@ -86,9 +90,6 @@ bot.on("callback_query:data", async (ctx) => {
   const handled = await checkout.handleCheckoutCallback(ctx)
   if (handled) return
 })
-
-// ✅ Hook admin approve/decline after bot is ready
-setupAdminCallbacks(bot);
 
 // 🧯 Error handling
 bot.catch((err) => {
