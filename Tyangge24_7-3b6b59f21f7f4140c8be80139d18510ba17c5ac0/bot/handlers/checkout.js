@@ -261,8 +261,8 @@ export async function handleCheckoutCallback(ctx) {
     });
 
     await order.save();
-    await notifyAdmin(user);
-    await ctx.answerCallbackQuery();
+await notifyAdmin(order); // ✅ correct now!
+await ctx.answerCallbackQuery();
     return true;
   }
 
