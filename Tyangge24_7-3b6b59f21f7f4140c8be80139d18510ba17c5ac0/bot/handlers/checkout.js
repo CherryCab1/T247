@@ -1,5 +1,5 @@
 import { Keyboard } from "grammy";
-import { User, Order, PendingOrderApproval } from "../../models/index.js"; // ✅ Include PendingOrderApproval
+import { User, Order, PendingOrderApproval } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
@@ -51,6 +51,7 @@ export function getOrderSummary(cart, checkoutData, deliveryFee) {
 export async function clearCheckoutState(user) {
   user.checkoutStep = null;
   user.checkoutData = {};
+  user.cart = [];
   await user.save();
 }
 
@@ -134,9 +135,7 @@ export async function handleCheckoutMessage(ctx) {
       user.checkoutData.location = ctx.message.location;
       user.checkoutStep = "awaiting_address_note";
       await user.save();
-      await ctx.reply(
-        "May gusto ka pa i-add nga note para sa address mo? (e.g. 'Pink gate, tupad sang lugawan.') Type 'wala' kung deadma lang."
-      );
+      await ctx.reply("May note ka pa para sa address? Type 'wala' kung deadma lang.");
       return true;
     }
     if (ctx.message.text === "⬅️ Balik") {
@@ -150,48 +149,29 @@ export async function handleCheckoutMessage(ctx) {
   }
 
   if (user.checkoutStep === "awaiting_address_note" && ctx.message.text) {
-    const addressNote =
-      ctx.message.text.trim().toLowerCase() === "wala"
-        ? ""
-        : ctx.message.text.trim();
-    user.checkoutData.addressNote = addressNote;
+    const note = ctx.message.text.trim().toLowerCase() === "wala" ? "" : ctx.message.text.trim();
+    user.checkoutData.addressNote = note;
     user.checkoutStep = "confirming";
 
-    const userLoc = user.checkoutData.location;
-    const distance = calculateDistanceKm(
-      SHOP_LOCATION.lat,
-      SHOP_LOCATION.lng,
-      userLoc.latitude,
-      userLoc.longitude
-    );
-    const deliveryFee = calculateDeliveryFee(distance);
+    const loc = user.checkoutData.location;
+    const distance = calculateDistanceKm(SHOP_LOCATION.lat, SHOP_LOCATION.lng, loc.latitude, loc.longitude);
+    const fee = calculateDeliveryFee(distance);
 
-    const resolved = await reverseGeocode(
-      userLoc.latitude,
-      userLoc.longitude
-    );
+    const resolved = await reverseGeocode(loc.latitude, loc.longitude);
     user.checkoutData.resolvedAddress = resolved || "📍 Unknown address";
-
-    user.checkoutData.deliveryFee = deliveryFee;
+    user.checkoutData.deliveryFee = fee;
     user.checkoutData.grandTotal =
-      user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) +
-      deliveryFee;
+      user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + fee;
+
     await user.save();
 
-    const summary = getOrderSummary(user.cart, user.checkoutData, deliveryFee);
+    const summary = getOrderSummary(user.cart, user.checkoutData, fee);
     await ctx.reply(
-      `${summary}\n\n✅ Kung bet mo na ini, tap mo lang ang ‘Confirmed, proceed to payment!’ button.\n❌ Kung may mali, just type /back para makabalik ka sa step.\n\n💋 G na, beks?!`,
+      `${summary}\n\n✅ Kung bet mo na ini, tap mo lang ang ‘Confirmed, proceed to payment!’ button.\n❌ Kung may mali, just type /back para makabalik ka sa step.`,
       {
         parse_mode: "HTML",
         reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "✅ Confirmed, proceed to payment!",
-                callback_data: "checkout_confirm",
-              },
-            ],
-          ],
+          inline_keyboard: [[{ text: "✅ Confirmed, proceed to payment!", callback_data: "checkout_confirm" }]],
         },
       }
     );
@@ -204,40 +184,31 @@ export async function handleCheckoutMessage(ctx) {
 export async function handleCheckoutCallback(ctx) {
   const userId = ctx.from.id;
   const user = await User.findOne({ telegramId: userId });
-
   if (!user || user.checkoutStep !== "confirming") return false;
 
   if (ctx.callbackQuery.data === "checkout_confirm") {
-    const animations = [
+    const loadingMsgs = [
       "⏳ Ginaluto pa beks...",
       "👩‍🍳 Ginalaga na sa init sang chismis...",
       "📡 Ginatawag na si admin para mag desisyon!",
     ];
-
-    const loadingMessage = await ctx.reply(animations[0]);
-    let index = 0;
-
+    const loadingMsg = await ctx.reply(loadingMsgs[0]);
+    let i = 0;
     const loop = setInterval(async () => {
-      index = (index + 1) % animations.length;
+      i = (i + 1) % loadingMsgs.length;
       try {
-        await ctx.api.editMessageText(
-          ctx.chat.id,
-          loadingMessage.message_id,
-          animations[index]
-        );
-      } catch (err) {
+        await ctx.api.editMessageText(ctx.chat.id, loadingMsg.message_id, loadingMsgs[i]);
+      } catch {
         clearInterval(loop);
         loadingLoops.delete(userId);
       }
     }, 2000);
-
     loadingLoops.set(userId, loop);
 
     user.checkoutStep = "awaiting_admin_approval";
     await user.save();
 
-    // ✅ Save properly formatted order
-    const order = new Order({
+    const orderData = {
       telegramId: user.telegramId,
       username: ctx.from.username,
       orderNumber: `ORD-${Date.now()}`,
@@ -258,14 +229,14 @@ export async function handleCheckoutCallback(ctx) {
       total: user.checkoutData.grandTotal,
       status: "pending_payment",
       paymentStatus: "pending",
-    });
+    };
+
+    const order = new Order(orderData);
+    const pending = new PendingOrderApproval(orderData);
 
     await order.save();
-
-    // ✅ Also save to PendingOrderApproval collection
-    const pending = new PendingOrderApproval(order.toObject());
     await pending.save();
-
+    await clearCheckoutState(user);
     await notifyAdmin(order);
     await ctx.answerCallbackQuery();
     return true;
