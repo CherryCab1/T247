@@ -1,9 +1,13 @@
 import { Keyboard } from "grammy";
 import { User } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
+import { notifyAdmin } from "./notifyAdmin.js";
 
 // Set your shop’s coordinates!
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
+
+// In-memory animation loops store (can be imported in notifyAdmin.js)
+export const loadingLoops = new Map();
 
 // Haversine formula for distance in km
 export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
@@ -12,9 +16,7 @@ export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
   const dLng = toRad(lng2 - lng1);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return 6371 * c;
 }
@@ -69,10 +71,9 @@ export async function handleCheckout(ctx) {
   user.checkoutData = {};
   await user.save();
 
-  await ctx.reply(
-    "Gorlay! 📝 Anong full name mo bala para sa order?",
-    { reply_markup: { remove_keyboard: true } }
-  );
+  await ctx.reply("Gorlay! 📝 Anong full name mo bala para sa order?", {
+    reply_markup: { remove_keyboard: true },
+  });
 }
 
 // Pangayo number gamit contact share
@@ -81,10 +82,9 @@ export async function askForMobile(ctx) {
     .requestContact("📲 Share mo number mo, bakla!")
     .row()
     .text("⬅️ Balik");
-  await ctx.reply(
-    "📱 Pindota lang ang button, i-share mo number mo, day!",
-    { reply_markup: keyboard }
-  );
+  await ctx.reply("📱 Pindota lang ang button, i-share mo number mo, day!", {
+    reply_markup: keyboard,
+  });
 }
 
 // Pangayo location gamit location share
@@ -144,7 +144,9 @@ export async function handleCheckoutMessage(ctx) {
       user.checkoutData.location = ctx.message.location;
       user.checkoutStep = "awaiting_address_note";
       await user.save();
-      await ctx.reply("May gusto ka pa i-add nga note para sa address mo? (e.g. 'Pink gate, tupad sang lugawan.') Type 'wala' kung deadma lang.");
+      await ctx.reply(
+        "May gusto ka pa i-add nga note para sa address mo? (e.g. 'Pink gate, tupad sang lugawan.') Type 'wala' kung deadma lang."
+      );
       return true;
     }
     if (ctx.message.text === "⬅️ Balik") {
@@ -159,7 +161,10 @@ export async function handleCheckoutMessage(ctx) {
 
   // Step 4: Optional address note
   if (user.checkoutStep === "awaiting_address_note" && ctx.message.text) {
-    user.checkoutData.addressNote = ctx.message.text.trim().toLowerCase() === "wala" ? "" : ctx.message.text.trim();
+    user.checkoutData.addressNote =
+      ctx.message.text.trim().toLowerCase() === "wala"
+        ? ""
+        : ctx.message.text.trim();
     user.checkoutStep = "confirming";
     await user.save();
 
@@ -173,20 +178,34 @@ export async function handleCheckoutMessage(ctx) {
     const deliveryFee = calculateDeliveryFee(distance);
 
     user.checkoutData.deliveryFee = deliveryFee;
-    user.checkoutData.grandTotal = user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + deliveryFee;
+    user.checkoutData.grandTotal =
+      user.cart.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      ) + deliveryFee;
     await user.save();
 
-    const summary = getOrderSummary(user.cart, user.checkoutData, deliveryFee);
-    await ctx.reply( `${summary}\n\nKon okay ka na, dai, pindota lang ang 'Confirmed, proceed to payment!'\n\nKung may mali or gusto mo balik, type /back lang ha!`,
-  {
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "✅ Confirmed, proceed to payment!", callback_data: "checkout_confirm" }]
-      ]
-    }
-  }
-);
+    const summary = getOrderSummary(
+      user.cart,
+      user.checkoutData,
+      deliveryFee
+    );
+    await ctx.reply(
+      `${summary}\n\nKon okay ka na, dai, pindota lang ang 'Confirmed, proceed to payment!'\n\nKung may mali or gusto mo balik, type /back lang ha!`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "✅ Confirmed, proceed to payment!",
+                callback_data: "checkout_confirm",
+              },
+            ],
+          ],
+        },
+      }
+    );
     return true;
   }
 
@@ -201,23 +220,35 @@ export async function handleCheckoutCallback(ctx) {
   if (!user || user.checkoutStep !== "confirming") return false;
 
   if (ctx.callbackQuery.data === "checkout_confirm") {
-    const paymentLink = await createXenditPayment(
-      user.checkoutData.grandTotal,
-      user.checkoutData.name,
-      user.checkoutData.mobile
-    );
-    const summary = getOrderSummary(user.cart, user.checkoutData, user.checkoutData.deliveryFee);
+    const animations = [
+      "⏳ Ginaluto pa beks...",
+      "👩‍🍳 Ginalaga na sa init sang chismis...",
+      "📡 Ginatawag na si admin para mag desisyon!"
+    ];
 
-    await ctx.reply(
-  `💸 <b>Payment Details</b>\n\n${summary}\n\nI-scan or i-click ang link para bayaran na ang order mo, dai!\n${paymentLink}\n\nAfter mo mabayaran, wait ka lang sa update sa delivery ha!`,
-  { parse_mode: "HTML" }
-);
+    const loadingMessage = await ctx.reply(animations[0]);
+    let index = 0;
 
-    user.cart = [];
-    user.checkoutStep = null;
-    user.checkoutData = {};
+    const loop = setInterval(async () => {
+      index = (index + 1) % animations.length;
+      try {
+        await ctx.api.editMessageText(
+          ctx.chat.id,
+          loadingMessage.message_id,
+          animations[index]
+        );
+      } catch (err) {
+        clearInterval(loop);
+        loadingLoops.delete(userId);
+      }
+    }, 2000);
+
+    loadingLoops.set(userId, loop);
+
+    user.checkoutStep = "awaiting_admin_approval";
     await user.save();
 
+    await notifyAdmin(user);
     await ctx.answerCallbackQuery();
     return true;
   }
