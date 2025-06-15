@@ -24,6 +24,7 @@ export async function createXenditPayment(amount, name, mobile) {
     currency: "PHP",
     callback_url: process.env.XENDIT_CALLBACK_URL || "https://your-domain.com/webhook/xendit",
     type: "DYNAMIC",
+    channel_code: "PH_QR_PH",
   }
 
   try {
