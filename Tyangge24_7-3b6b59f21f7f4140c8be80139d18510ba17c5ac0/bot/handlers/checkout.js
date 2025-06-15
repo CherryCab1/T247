@@ -1,8 +1,8 @@
 import { Keyboard } from "grammy";
-import { User } from "../../models/index.js";
+import { User, Order } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
-import { reverseGeocode } from "../services/geocode.js"; // 👈 NEW!
+import { reverseGeocode } from "../services/geocode.js";
 
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
 export const loadingLoops = new Map();
@@ -88,10 +88,9 @@ export async function askForLocation(ctx) {
     .requestLocation("📍 Share mo location mo, dai!")
     .row()
     .text("⬅️ Balik");
-  await ctx.reply(
-    "📍 Tap the button para mashare mo location mo, beshie!",
-    { reply_markup: keyboard }
-  );
+  await ctx.reply("📍 Tap the button para mashare mo location mo, beshie!", {
+    reply_markup: keyboard,
+  });
 }
 
 export async function handleCheckoutMessage(ctx) {
@@ -99,7 +98,6 @@ export async function handleCheckoutMessage(ctx) {
   const user = await User.findOne({ telegramId: userId });
   if (!user || !user.checkoutStep) return;
 
-  // Step 1: Pangalan
   if (user.checkoutStep === "awaiting_name" && ctx.message.text) {
     const name = ctx.message.text.trim();
     if (name.length < 3) {
@@ -113,7 +111,6 @@ export async function handleCheckoutMessage(ctx) {
     return true;
   }
 
-  // Step 2: Mobile
   if (user.checkoutStep === "awaiting_mobile") {
     if (ctx.message.contact && ctx.message.contact.phone_number) {
       user.checkoutData.mobile = ctx.message.contact.phone_number;
@@ -132,7 +129,6 @@ export async function handleCheckoutMessage(ctx) {
     return true;
   }
 
-  // Step 3: Location
   if (user.checkoutStep === "awaiting_location") {
     if (ctx.message.location) {
       user.checkoutData.location = ctx.message.location;
@@ -153,7 +149,6 @@ export async function handleCheckoutMessage(ctx) {
     return true;
   }
 
-  // Step 4: Optional address note + Reverse geocode
   if (user.checkoutStep === "awaiting_address_note" && ctx.message.text) {
     const addressNote =
       ctx.message.text.trim().toLowerCase() === "wala"
@@ -171,7 +166,6 @@ export async function handleCheckoutMessage(ctx) {
     );
     const deliveryFee = calculateDeliveryFee(distance);
 
-    // 🧭 Reverse Geocode
     const resolved = await reverseGeocode(
       userLoc.latitude,
       userLoc.longitude
@@ -180,7 +174,8 @@ export async function handleCheckoutMessage(ctx) {
 
     user.checkoutData.deliveryFee = deliveryFee;
     user.checkoutData.grandTotal =
-      user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + deliveryFee;
+      user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) +
+      deliveryFee;
     await user.save();
 
     const summary = getOrderSummary(user.cart, user.checkoutData, deliveryFee);
@@ -216,7 +211,7 @@ export async function handleCheckoutCallback(ctx) {
     const animations = [
       "⏳ Ginaluto pa beks...",
       "👩‍🍳 Ginalaga na sa init sang chismis...",
-      "📡 Ginatawag na si admin para mag desisyon!"
+      "📡 Ginatawag na si admin para mag desisyon!",
     ];
 
     const loadingMessage = await ctx.reply(animations[0]);
@@ -240,6 +235,21 @@ export async function handleCheckoutCallback(ctx) {
 
     user.checkoutStep = "awaiting_admin_approval";
     await user.save();
+
+    // 👉 SAVE ORDER HERE
+    const order = new Order({
+      telegramId: user.telegramId,
+      userId: user.telegramId,
+      items: user.cart,
+      status: "pending",
+      name: user.checkoutData.name,
+      mobile: user.checkoutData.mobile,
+      address: user.checkoutData.resolvedAddress,
+      addressNote: user.checkoutData.addressNote || "",
+      total: user.checkoutData.grandTotal,
+      createdAt: new Date(),
+    });
+    await order.save();
 
     await notifyAdmin(user);
     await ctx.answerCallbackQuery();
