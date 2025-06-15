@@ -2,21 +2,39 @@ import { InlineKeyboard } from "grammy";
 import { config } from "../../config/env.js";
 import { PendingOrderApproval, Order } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
+import { reverseGeocode } from "../services/geocode.js";
 
 // Notify admin with approve/decline buttons using PendingOrderApproval._id
-export async function notifyAdmin(bot, order, pendingOrder) {
+export async function notifyAdmin(bot, pendingOrder) {
   const keyboard = new InlineKeyboard()
     .text("✅ Approve", `approve_${pendingOrder._id}`)
     .text("❌ Decline", `decline_${pendingOrder._id}`);
 
+  // Fetch resolved address if not already present
+  let resolvedAddress = pendingOrder.customerInfo?.location?.resolvedAddress;
+  if (
+    (!resolvedAddress || resolvedAddress === "📍 Unknown address") &&
+    pendingOrder.customerInfo?.location?.latitude &&
+    pendingOrder.customerInfo?.location?.longitude
+  ) {
+    try {
+      resolvedAddress = await reverseGeocode(
+        pendingOrder.customerInfo.location.latitude,
+        pendingOrder.customerInfo.location.longitude
+      );
+    } catch (err) {
+      resolvedAddress = "📍 [Location shared lang]";
+    }
+  }
+
   const summary = `
 📢 <b>ORDER FOR APPROVAL</b>
-🆔 Order #: ${order.orderNumber}
-👤 Name: ${order.customerInfo.name}
-📱 Contact: ${order.customerInfo.contact}
-🏡 Address: ${order.customerInfo.location.resolvedAddress}
-📝 Note: ${order.customerInfo.addressNote}
-💰 Total: ₱${order.total}
+🆔 Order #: ${pendingOrder.orderNumber}
+👤 Name: ${pendingOrder.customerInfo?.name || "N/A"}
+📱 Contact: ${pendingOrder.customerInfo?.contact || "N/A"}
+🏡 Address: ${resolvedAddress || "N/A"}
+📝 Note: ${pendingOrder.customerInfo?.addressNote || "None"}
+💰 Total: ₱${pendingOrder.total}
 `;
 
   await bot.api.sendMessage(
