@@ -185,7 +185,7 @@ export const productData = {
   },
 
   icy_refreshments: {
-    label: "Spicy Accessories",
+    label: "Icy Refreshments",
     emoji: "🧊",
     items: [
       {
