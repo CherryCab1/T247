@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const PendingOrderApprovalSchema = new mongoose.Schema({
+const pendingOrderApprovalSchema = new mongoose.Schema({
   telegramId: { type: Number, required: true },
   username: { type: String },
   orderNumber: { type: String, required: true },
@@ -14,4 +14,7 @@ const PendingOrderApprovalSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export const PendingOrderApproval = mongoose.model("PendingOrderApproval", PendingOrderApprovalSchema);
+export const PendingOrderApproval = mongoose.model(
+  "PendingOrderApproval", // 👈 this is the model name in MongoDB
+  pendingOrderApprovalSchema
+);
