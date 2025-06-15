@@ -2,14 +2,11 @@ import { Keyboard } from "grammy";
 import { User } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
+import { reverseGeocode } from "../services/geocode.js"; // 👈 NEW!
 
-// Set your shop’s coordinates!
 export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
-
-// In-memory animation loops store (can be imported in notifyAdmin.js)
 export const loadingLoops = new Map();
 
-// Haversine formula for distance in km
 export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
   const toRad = (deg) => deg * (Math.PI / 180);
   const dLat = toRad(lat2 - lat1);
@@ -21,14 +18,12 @@ export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
   return 6371 * c;
 }
 
-// Customize delivery fee formula as needed
 export function calculateDeliveryFee(distanceKm) {
   const base = 50;
   const perKm = 10;
   return Math.round(base + perKm * distanceKm);
 }
 
-// Ilonggo-Beki order summary
 export function getOrderSummary(cart, checkoutData, deliveryFee) {
   let summary = "🌈 <b>BEKS ORDER SUMMARY</b>\n";
   let total = 0;
@@ -44,19 +39,21 @@ export function getOrderSummary(cart, checkoutData, deliveryFee) {
   summary += `\n🚚 Delivery Fee: ₱${deliveryFee}`;
   summary += `\n\n💎 <b>GRAND TOTAL:</b> ₱${total + deliveryFee}`;
   if (checkoutData) {
-    summary += `\n\n👤 Pangalan: ${checkoutData.name || ""}\n📱 Number: ${checkoutData.mobile || ""}\n🏡 Location: ${checkoutData.addressNote || "📍 [Shared Location]"}`;
+    summary += `\n\n👤 Pangalan: ${checkoutData.name || ""}`;
+    summary += `\n📱 Number: ${checkoutData.mobile || ""}`;
+    summary += `\n🏡 Address: ${checkoutData.resolvedAddress || "📍 [Location shared lang]"} ${
+      checkoutData.addressNote ? `\n📝 Note: ${checkoutData.addressNote}` : ""
+    }`;
   }
   return summary;
 }
 
-// Reset checkout status sang beks
 export async function clearCheckoutState(user) {
   user.checkoutStep = null;
   user.checkoutData = {};
   await user.save();
 }
 
-// Sugod checkout process
 export async function handleCheckout(ctx) {
   const userId = ctx.from.id;
   const user = await User.findOne({ telegramId: userId });
@@ -76,7 +73,6 @@ export async function handleCheckout(ctx) {
   });
 }
 
-// Pangayo number gamit contact share
 export async function askForMobile(ctx) {
   const keyboard = new Keyboard()
     .requestContact("📲 Share mo number mo, bakla!")
@@ -87,7 +83,6 @@ export async function askForMobile(ctx) {
   });
 }
 
-// Pangayo location gamit location share
 export async function askForLocation(ctx) {
   const keyboard = new Keyboard()
     .requestLocation("📍 Share mo location mo, dai!")
@@ -99,7 +94,6 @@ export async function askForLocation(ctx) {
   );
 }
 
-// Main handler sa mga messages during checkout
 export async function handleCheckoutMessage(ctx) {
   const userId = ctx.from.id;
   const user = await User.findOne({ telegramId: userId });
@@ -159,14 +153,14 @@ export async function handleCheckoutMessage(ctx) {
     return true;
   }
 
-  // Step 4: Optional address note
+  // Step 4: Optional address note + Reverse geocode
   if (user.checkoutStep === "awaiting_address_note" && ctx.message.text) {
-    user.checkoutData.addressNote =
+    const addressNote =
       ctx.message.text.trim().toLowerCase() === "wala"
         ? ""
         : ctx.message.text.trim();
+    user.checkoutData.addressNote = addressNote;
     user.checkoutStep = "confirming";
-    await user.save();
 
     const userLoc = user.checkoutData.location;
     const distance = calculateDistanceKm(
@@ -177,21 +171,21 @@ export async function handleCheckoutMessage(ctx) {
     );
     const deliveryFee = calculateDeliveryFee(distance);
 
+    // 🧭 Reverse Geocode
+    const resolved = await reverseGeocode(
+      userLoc.latitude,
+      userLoc.longitude
+    );
+    user.checkoutData.resolvedAddress = resolved || "📍 Unknown address";
+
     user.checkoutData.deliveryFee = deliveryFee;
     user.checkoutData.grandTotal =
-      user.cart.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      ) + deliveryFee;
+      user.cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + deliveryFee;
     await user.save();
 
-    const summary = getOrderSummary(
-      user.cart,
-      user.checkoutData,
-      deliveryFee
-    );
+    const summary = getOrderSummary(user.cart, user.checkoutData, deliveryFee);
     await ctx.reply(
-      `${summary}\n\nKon okay ka na, dai, pindota lang ang 'Confirmed, proceed to payment!'\n\nKung may mali or gusto mo balik, type /back lang ha!`,
+      `${summary}\n\n✅ Kung bet mo na ini, tap mo lang ang ‘Confirmed, proceed to payment!’ button.\n❌ Kung may mali, just type /back para makabalik ka sa step.\n\n💋 G na, beks?!`,
       {
         parse_mode: "HTML",
         reply_markup: {
@@ -212,7 +206,6 @@ export async function handleCheckoutMessage(ctx) {
   return false;
 }
 
-// Handler sang inline button para sa payment confirm
 export async function handleCheckoutCallback(ctx) {
   const userId = ctx.from.id;
   const user = await User.findOne({ telegramId: userId });
