@@ -4,7 +4,7 @@ import { PendingOrderApproval, Order } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
 
 // Notify admin with approve/decline buttons using PendingOrderApproval._id
-export async function notifyAdmin(order, pendingOrder) {
+export async function notifyAdmin(bot, order, pendingOrder) {
   const keyboard = new InlineKeyboard()
     .text("✅ Approve", `approve_${pendingOrder._id}`)
     .text("❌ Decline", `decline_${pendingOrder._id}`);
@@ -18,8 +18,6 @@ export async function notifyAdmin(order, pendingOrder) {
 📝 Note: ${order.customerInfo.addressNote}
 💰 Total: ₱${order.total}
 `;
-
-  await pendingOrder.populate("telegramId"); // just in case
 
   await bot.api.sendMessage(
     config.ADMIN_CHAT_ID,
