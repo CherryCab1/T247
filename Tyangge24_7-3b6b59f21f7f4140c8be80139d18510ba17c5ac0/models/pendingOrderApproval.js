@@ -1,7 +1,3 @@
-// models/PendingOrderApproval.js
-
-import mongoose from "mongoose";
-
 const PendingOrderApprovalSchema = new mongoose.Schema({
   telegramId: { type: Number, required: true },
   username: { type: String },
@@ -12,11 +8,6 @@ const PendingOrderApprovalSchema = new mongoose.Schema({
   deliveryFee: { type: Number, required: true },
   total: { type: Number, required: true },
   paymentStatus: { type: String, default: "pending" },
-  status: { type: String, default: "pending_approval" }, // 🔥 Added line
+  status: { type: String, default: "pending_approval" }, // ✅ HERE
   createdAt: { type: Date, default: Date.now },
 });
-
-export const PendingOrderApproval = mongoose.model(
-  "pendingOrderApproval",
-  PendingOrderApprovalSchema
-);
