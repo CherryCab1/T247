@@ -1,5 +1,5 @@
 import { Keyboard } from "grammy";
-import { User, Order } from "../../models/index.js";
+import { User, Order, PendingOrderApproval } from "../../models/index.js"; // ✅ Include PendingOrderApproval
 import { createXenditPayment } from "../services/xendit.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
@@ -261,8 +261,13 @@ export async function handleCheckoutCallback(ctx) {
     });
 
     await order.save();
-await notifyAdmin(order); // ✅ correct now!
-await ctx.answerCallbackQuery();
+
+    // ✅ Also save to PendingOrderApproval collection
+    const pending = new PendingOrderApproval(order.toObject());
+    await pending.save();
+
+    await notifyAdmin(order);
+    await ctx.answerCallbackQuery();
     return true;
   }
 
