@@ -1,67 +1,43 @@
-// admin.js
-import { Order, PendingOrderApproval } from "../../models/index.js";
-import { reverseGeocode } from "../services/geocode.js";
+import { InlineKeyboard } from "grammy";
+import { config } from "../../config/env.js";
+import { PendingOrderApproval, Order } from "../../models/index.js";
 import { createXenditPayment } from "../services/xendit.js";
-import { bot } from "../index.js";
 
-async function generateAdminOrderSummary(order) {
-  let text = "🛒 <b>NEW ORDER ALERT!</b>\n\n";
-  order.items.forEach((item, idx) => {
-    const name = item.variantName
-      ? `${item.productName} (${item.variantName})`
-      : item.productName;
-    const subtotal = item.price * item.quantity;
-    text += `${idx + 1}. ${name} — ₱${item.price} x ${item.quantity} = ₱${subtotal}\n`;
-  });
+// Notify admin with approve/decline buttons using PendingOrderApproval._id
+export async function notifyAdmin(order, pendingOrder) {
+  const keyboard = new InlineKeyboard()
+    .text("✅ Approve", `approve_${pendingOrder._id}`)
+    .text("❌ Decline", `decline_${pendingOrder._id}`);
 
-  text += `\n💅 Subtotal: ₱${order.subtotal}`;
-  text += `\n🚚 Delivery Fee: ₱${order.deliveryFee}`;
-  text += `\n\n💎 <b>GRAND TOTAL:</b> ₱${order.total}`;
-  text += `\n\n👤 Pangalan: ${order.customerInfo.name}`;
-  text += `\n📱 Number: ${order.customerInfo.contact}`;
+  const summary = `
+📢 <b>ORDER FOR APPROVAL</b>
+🆔 Order #: ${order.orderNumber}
+👤 Name: ${order.customerInfo.name}
+📱 Contact: ${order.customerInfo.contact}
+🏡 Address: ${order.customerInfo.location.resolvedAddress}
+📝 Note: ${order.customerInfo.addressNote}
+💰 Total: ₱${order.total}
+`;
 
-  if (
-    order.customerInfo.location?.latitude &&
-    order.customerInfo.location?.longitude
-  ) {
-    const barangay = await reverseGeocode(
-      order.customerInfo.location.latitude,
-      order.customerInfo.location.longitude
-    );
-    text += `\n📍 Barangay: ${barangay || "N/A"}`;
-  }
+  await pendingOrder.populate("telegramId"); // just in case
 
-  text += `\n📝 Address Note: ${order.customerInfo.addressNote || "Wala"}`;
-  text += `\n📦 Status: <b>${order.status}</b>`;
-
-  return text;
+  await bot.api.sendMessage(
+    config.ADMIN_CHAT_ID,
+    summary,
+    {
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    }
+  );
 }
 
-export async function notifyAdmin(pendingOrder) {
-  const summary = await generateAdminOrderSummary(pendingOrder);
-  await bot.api.sendMessage(process.env.ADMIN_TELEGRAM_ID, summary, {
-    parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "✅ Approve & Send Payment",
-            callback_data: `approve_${pendingOrder._id}`,
-          },
-          {
-            text: "❌ Decline",
-            callback_data: `decline_${pendingOrder._id}`,
-          },
-        ],
-      ],
-    },
-  });
-}
-
+// Setup admin callback handlers for order approval
 export function setupAdminCallbacks(bot) {
+  // Handles both approve and decline
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
     const [, action, pendingId] = ctx.match;
     const pendingOrder = await PendingOrderApproval.findById(pendingId);
+
     if (!pendingOrder) {
       return await ctx.answerCallbackQuery({
         text: "Pending order not found!",
@@ -79,6 +55,7 @@ export function setupAdminCallbacks(bot) {
       await newOrder.save();
       await PendingOrderApproval.findByIdAndDelete(pendingId);
 
+      // Create payment and send to user
       const payment = await createXenditPayment(newOrder);
       const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
