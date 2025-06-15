@@ -1,9 +1,9 @@
 import { Order } from "../../models/index.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { createXenditPayment } from "../services/xendit.js";
-import { bot } from "../index.js"; // ✅ Import the bot directly
+import { bot } from "../index.js"; // ✅ Use the shared bot instance
 
-// Generate admin summary
+// ✅ Generate the admin summary message
 async function generateAdminOrderSummary(order) {
   let text = "🛒 <b>NEW ORDER ALERT!</b>\n\n";
 
@@ -39,7 +39,7 @@ async function generateAdminOrderSummary(order) {
   return text;
 }
 
-// ✅ Send notification to admin
+// ✅ Send notification to admin with inline buttons
 export async function notifyAdmin(order) {
   const summary = await generateAdminOrderSummary(order);
 
@@ -62,7 +62,7 @@ export async function notifyAdmin(order) {
   });
 }
 
-// ✅ Admin approval / decline logic
+// ✅ Handle admin approval/decline via inline buttons
 export function setupAdminCallbacks(bot) {
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
     const [, action, orderId] = ctx.match;
@@ -73,7 +73,7 @@ export function setupAdminCallbacks(bot) {
         show_alert: true,
       });
 
-    const userId = order.telegramId;
+    const userId = order.telegramId; // ✅ FIXED: this sends message to the buyer
 
     if (action === "approve") {
       order.status = "awaiting_payment";
