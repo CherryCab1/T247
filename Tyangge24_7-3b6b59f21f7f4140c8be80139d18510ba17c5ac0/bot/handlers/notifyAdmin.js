@@ -1,7 +1,7 @@
 import { Order } from "../../models/index.js";
 import { reverseGeocode } from "../services/geocode.js";
 import { createXenditPayment } from "../services/xendit.js";
-import { bot } from "../index.js"; // ✅ Ensure bot is imported
+import { bot } from "../index.js"; // Import bot instance
 
 // Generate admin summary
 async function generateAdminOrderSummary(order) {
@@ -39,7 +39,7 @@ async function generateAdminOrderSummary(order) {
   return text;
 }
 
-// ✅ Notify admin
+// ✅ Send notification to admin
 export async function notifyAdmin(order) {
   const summary = await generateAdminOrderSummary(order);
 
@@ -62,7 +62,7 @@ export async function notifyAdmin(order) {
   });
 }
 
-// ✅ Approval / decline flow
+// ✅ Admin approval / decline logic
 export function setupAdminCallbacks(bot) {
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
     const [, action, orderId] = ctx.match;
@@ -74,15 +74,8 @@ export function setupAdminCallbacks(bot) {
       });
     }
 
-    const userId = String(order.telegramId); // ✅ Force string
-
-    if (!userId) {
-      console.log("❌ Missing telegramId in order:", order);
-      return await ctx.answerCallbackQuery({
-        text: "Wala ko kakita ka user bes 😢",
-        show_alert: true,
-      });
-    }
+    const userId = order.telegramId;
+    console.log("🔍 Approving order for Telegram ID:", userId);
 
     if (action === "approve") {
       order.status = "awaiting_payment";
@@ -92,34 +85,34 @@ export function setupAdminCallbacks(bot) {
         const payment = await createXenditPayment(order);
         const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
-        await bot.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
+        await bot.api.sendMessage(userId, paymentText, {
+          parse_mode: "HTML",
+        });
+
         await ctx.editMessageText("✅ Order approved and payment sent to customer!");
       } catch (err) {
-        console.error("❌ Failed to send payment to user:", err);
+        console.error("❌ Error sending to user:", err);
+
         await ctx.answerCallbackQuery({
-          text: "Failed to send payment link to user 😢",
+          text: "Wala ko kakita ka user bes 😭",
           show_alert: true,
         });
+
+        await bot.api.sendMessage(
+          process.env.ADMIN_TELEGRAM_ID,
+          `❌ Indi ko mapasahan si user (${userId}). Error:\n\n${err.description || err.message}`
+        );
       }
     }
 
     if (action === "decline") {
       order.status = "declined";
       await order.save();
-
-      try {
-        await bot.api.sendMessage(
-          userId,
-          "❌ Sorry, dai. Na-decline ni admin ang imo order. If this was a mistake, try again or contact us ha. 💔"
-        );
-        await ctx.editMessageText("🚫 Order declined.");
-      } catch (err) {
-        console.error("❌ Failed to send decline message:", err);
-        await ctx.answerCallbackQuery({
-          text: "Failed to notify user 😢",
-          show_alert: true,
-        });
-      }
+      await bot.api.sendMessage(
+        userId,
+        "❌ Sorry, dai. Na-decline ni admin ang imo order. If this was a mistake, try again or contact us ha. 💔"
+      );
+      await ctx.editMessageText("🚫 Order declined.");
     }
 
     await ctx.answerCallbackQuery();
