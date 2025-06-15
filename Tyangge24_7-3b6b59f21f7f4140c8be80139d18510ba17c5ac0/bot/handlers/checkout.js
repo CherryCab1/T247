@@ -232,7 +232,10 @@ export async function handleCheckoutCallback(ctx) {
     };
 
     const order = new Order(orderData);
-    const pending = new PendingOrderApproval(orderData);
+    const pending = new PendingOrderApproval({
+  ...orderData,
+  status: "pending_approval", // ✅ explicitly set approval status
+});
 
     await order.save();
     await pending.save();
