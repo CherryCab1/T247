@@ -150,6 +150,6 @@ chatLogSchema.index({ telegramId: 1, timestamp: -1 });
 export const User = mongoose.model("User", userSchema);
 export const Order = mongoose.model("Order", orderSchema);
 export const ChatLog = mongoose.model("ChatLog", chatLogSchema);
-export const PendingApproval = mongoose.model("PendingApproval", pendingApprovalSchema);
+export const PendingApproval = mongoose.model("pendingApproval", pendingApprovalSchema);
 export const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema);
 export { PendingOrderApproval };
