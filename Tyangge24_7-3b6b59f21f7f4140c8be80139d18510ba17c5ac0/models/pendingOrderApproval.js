@@ -12,6 +12,7 @@ const PendingOrderApprovalSchema = new mongoose.Schema({
   deliveryFee: { type: Number, required: true },
   total: { type: Number, required: true },
   paymentStatus: { type: String, default: "pending" },
+  status: { type: String, default: "pending_approval" }, // 🔥 Added line
   createdAt: { type: Date, default: Date.now },
 });
 
