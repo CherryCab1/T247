@@ -237,7 +237,7 @@ export async function handleCheckoutCallback(ctx) {
     await pending.save();
 
     await clearCheckoutState(user);
-    await notifyAdmin(bot, null, pending); // Pass null for order, pending for admin notification
+    await notifyAdmin(bot, pending);
     await ctx.answerCallbackQuery();
     return true;
   }
