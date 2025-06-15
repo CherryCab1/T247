@@ -22,7 +22,7 @@ export async function createXenditPayment(amount, name, mobile, telegramId) {
     amount,
     description: `Order for ${name} (${mobile})`,
     currency: "PHP",
-    channel_code: "PH_QR_GENE", // ✅ Ensure QRPH is selected
+    channel_code: "QRPH", // ✅ Ensure QRPH is selected
     callback_url: process.env.XENDIT_CALLBACK_URL || "https://tyangge24-7-1.onrender.com/webhook/xendit",
     type: "DYNAMIC",
   }
