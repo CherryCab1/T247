@@ -233,14 +233,14 @@ export async function handleCheckoutCallback(ctx) {
 
     const order = new Order(orderData);
     const pending = new PendingOrderApproval({
-  ...orderData,
-  status: "pending_approval", // ✅ explicitly set approval status
-});
+      ...orderData,
+      status: "pending_approval",
+    });
 
     await order.save();
     await pending.save();
     await clearCheckoutState(user);
-    await notifyAdmin(order);
+    await notifyAdmin(order, pending); // <-- pass both order and pending
     await ctx.answerCallbackQuery();
     return true;
   }
