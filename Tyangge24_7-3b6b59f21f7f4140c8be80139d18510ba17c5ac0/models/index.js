@@ -152,4 +152,4 @@ export const Order = mongoose.model("Order", orderSchema);
 export const ChatLog = mongoose.model("ChatLog", chatLogSchema);
 export const PendingApproval = mongoose.model("pendingApproval", pendingApprovalSchema);
 export const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema);
-export { PendingOrderApproval };
+export { PendingOrderApproval } from "./pendingOrderApproval.js";
