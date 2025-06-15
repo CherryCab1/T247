@@ -1,4 +1,4 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -35,13 +35,18 @@ const userSchema = new mongoose.Schema({
     location: {
       latitude: Number,
       longitude: Number,
+      resolvedAddress: String, // ✅ Added for human-readable address
     },
+    addressNote: String,
+    mobile: String,
+    deliveryFee: Number,
+    grandTotal: Number,
   },
   checkoutStep: String,
   joinedAt: { type: Date, default: Date.now },
   lastActive: { type: Date, default: Date.now, index: true },
   isOnline: { type: Boolean, default: false },
-})
+});
 
 // Order Schema
 const orderSchema = new mongoose.Schema({
@@ -65,7 +70,9 @@ const orderSchema = new mongoose.Schema({
     location: {
       latitude: Number,
       longitude: Number,
+      resolvedAddress: String, // ✅ Also here for admin/delivery view
     },
+    addressNote: String,
   },
   subtotal: Number,
   deliveryFee: Number,
@@ -86,7 +93,7 @@ const orderSchema = new mongoose.Schema({
   xenditInvoiceId: String,
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now },
-})
+});
 
 // Chat Log Schema
 const chatLogSchema = new mongoose.Schema({
@@ -104,7 +111,7 @@ const chatLogSchema = new mongoose.Schema({
   command: String,
   timestamp: { type: Date, default: Date.now, index: true },
   isFromAdmin: { type: Boolean, default: false },
-})
+});
 
 // Pending Approval Schema
 const pendingApprovalSchema = new mongoose.Schema({
@@ -112,7 +119,7 @@ const pendingApprovalSchema = new mongoose.Schema({
   username: String,
   chatId: Number,
   requestedAt: { type: Date, default: Date.now, index: true },
-})
+});
 
 // Payment Transaction Schema
 const paymentTransactionSchema = new mongoose.Schema({
@@ -132,15 +139,15 @@ const paymentTransactionSchema = new mongoose.Schema({
   webhookData: mongoose.Schema.Types.Mixed,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-})
+});
 
 // Create indexes for better performance
-userSchema.index({ telegramId: 1, status: 1 })
-orderSchema.index({ telegramId: 1, createdAt: -1 })
-chatLogSchema.index({ telegramId: 1, timestamp: -1 })
+userSchema.index({ telegramId: 1, status: 1 });
+orderSchema.index({ telegramId: 1, createdAt: -1 });
+chatLogSchema.index({ telegramId: 1, timestamp: -1 });
 
-export const User = mongoose.model("User", userSchema)
-export const Order = mongoose.model("Order", orderSchema)
-export const ChatLog = mongoose.model("ChatLog", chatLogSchema)
-export const PendingApproval = mongoose.model("PendingApproval", pendingApprovalSchema)
-export const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema)
+export const User = mongoose.model("User", userSchema);
+export const Order = mongoose.model("Order", orderSchema);
+export const ChatLog = mongoose.model("ChatLog", chatLogSchema);
+export const PendingApproval = mongoose.model("PendingApproval", pendingApprovalSchema);
+export const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema);
