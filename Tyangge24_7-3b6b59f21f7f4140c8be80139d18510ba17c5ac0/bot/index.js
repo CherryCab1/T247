@@ -85,6 +85,9 @@ bot.on("callback_query:data", async (ctx) => {
   if (handled) return
 })
 
+// ⬇️ Register admin approval buttons (AFTER bot is defined)
+import "./handlers/notifyAdmin.js"
+
 // 🧯 Error handling
 bot.catch((err) => {
   const ctx = err.ctx
