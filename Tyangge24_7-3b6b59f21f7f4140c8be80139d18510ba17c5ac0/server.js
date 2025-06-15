@@ -1,5 +1,3 @@
-// Main server entry file
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -10,7 +8,7 @@ import { connectDatabase, disconnectDatabase } from "./database/connection.js";
 import apiRoutes from "./api/routes.js";
 import { webhookCallback } from "grammy";
 import { bot, initializeBot } from "./bot/index.js";
-import xenditWebhookRouter from "./api/xenditWebhook.js"; // <-- Import the webhook router
+import webhookRoutes from "./routes/webhook.js"; // <-- Use routes/webhook.js as discussed
 
 dotenv.config();
 validateEnv();
@@ -40,7 +38,7 @@ app.use("/api", apiRoutes);
 app.use(config.WEBHOOK_PATH, webhookCallback(bot, "express"));
 
 // Xendit payment webhook -- must be before 404!
-app.use("/webhook/xendit", xenditWebhookRouter);
+app.use("/webhook", webhookRoutes); // Mounts /webhook/xendit
 
 // Health check
 app.get("/health", (req, res) => {
