@@ -1,48 +1,86 @@
-// notifyAdmin.js
+import { bot } from "../index.js";
+import { Order } from "../../models/index.js";
+import { reverseGeocode } from "../services/geocode.js";
+import { createXenditPayment } from "../services/xendit.js";
 
-import { bot } from "../bot.js";
-import { getEmoji } from "../helpers/emojiMap.js";
-import { config } from "../config/env.js";
+// Custom message summary for admin with reversed geocode
+async function generateAdminOrderSummary(order) {
+  let text = "🛒 <b>NEW ORDER ALERT!</b>\n\n";
 
-const ADMIN_ID = config.ADMIN_TELEGRAM_ID; // or hardcode your admin ID here
-
-export async function notifyAdmin(order) {
-  const { customerName, contactNumber, deliveryOption, totalAmount, items, deliveryLocation, _id } = order;
-
-  const itemsText = items.map((item) =>
-    `• ${item.quantity}x ${getEmoji(item.name)} ${item.name}${item.variant ? ' – ' + item.variant : ''}`
-  ).join('\n');
-
-  const gmapsUrl = deliveryLocation?.latitude && deliveryLocation?.longitude
-    ? `[View on Map](https://maps.google.com/?q=${deliveryLocation.latitude},${deliveryLocation.longitude})`
-    : `Not provided`;
-
-  const message = `
-🛍️ *New Order Alert!*
-
-👤 *Customer*: ${customerName}
-🛒 *Items*:
-${itemsText}
-💸 *Total*: ₱${totalAmount}
-📍 *Location*: ${gmapsUrl}
-
-📦 *Delivery Option*: ${deliveryOption}
-📞 *Contact*: ${contactNumber}
-🆔 *Order ID*: #${_id}
-
-🚦 Status: *Waiting for your approval, Fairy Gormother!*
-`;
-
-  await bot.api.sendMessage(ADMIN_ID, message, {
-    parse_mode: "Markdown",
-    disable_web_page_preview: true,
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: "✅ Confirm", callback_data: `confirm_order:${_id}` },
-          { text: "❌ Deny", callback_data: `deny_order:${_id}` },
-        ]
-      ]
-    }
+  order.items.forEach((item, idx) => {
+    const name = item.variantName ? `${item.productName} (${item.variantName})` : item.productName;
+    const subtotal = item.price * item.quantity;
+    text += `${idx + 1}. ${name} — ₱${item.price} x ${item.quantity} = ₱${subtotal}\n`;
   });
+
+  text += `\n💅 Subtotal: ₱${order.subtotal}`;
+  text += `\n🚚 Delivery Fee: ₱${order.deliveryFee}`;
+  text += `\n\n💎 <b>GRAND TOTAL:</b> ₱${order.total}`;
+
+  text += `\n\n👤 Pangalan: ${order.name}`;
+  text += `\n📱 Number: ${order.mobile}`;
+
+  if (order.location?.latitude && order.location?.longitude) {
+    const barangay = await reverseGeocode(order.location.latitude, order.location.longitude);
+    text += `\n📍 Barangay: ${barangay || "N/A"}`;
+  }
+
+  text += `\n📝 Address Note: ${order.addressNote || "Wala"}`;
+  text += `\n📦 Status: <b>${order.status}</b>`;
+
+  return text;
 }
+
+// Send order to admin with approve/decline buttons
+export async function notifyAdmin(user) {
+  const order = await Order.findOne({ userId: user.telegramId, status: "pending" });
+  if (!order) return;
+
+  const summary = await generateAdminOrderSummary(order);
+
+  await bot.api.sendMessage(
+    process.env.ADMIN_TELEGRAM_ID,
+    summary,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Approve & Send Payment", callback_data: `approve_${order._id}` },
+            { text: "❌ Decline", callback_data: `decline_${order._id}` }
+          ]
+        ]
+      }
+    }
+  );
+}
+
+// Handle admin decisions
+bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
+  const [, action, orderId] = ctx.match;
+  const order = await Order.findById(orderId);
+  if (!order) return await ctx.answerCallbackQuery({ text: "Order not found!", show_alert: true });
+
+  const userId = order.userId;
+
+  if (action === "approve") {
+    order.status = "awaiting_payment";
+    await order.save();
+
+    // Create payment link (QR or URL)
+    const payment = await createXenditPayment(order);
+    const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
+
+    await bot.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
+    await ctx.editMessageText("✅ Order approved and payment sent to customer!");
+  }
+
+  if (action === "decline") {
+    order.status = "declined";
+    await order.save();
+    await bot.api.sendMessage(userId, "❌ Sorry, dai. Na-decline ni admin ang imo order. If this was a mistake, try again or contact us ha. 💔");
+    await ctx.editMessageText("🚫 Order declined.");
+  }
+
+  await ctx.answerCallbackQuery();
+});
