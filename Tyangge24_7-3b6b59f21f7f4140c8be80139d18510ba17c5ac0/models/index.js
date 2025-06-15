@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import { PendingOrderApproval } from "./PendingOrderApproval.js";
 // User Schema
 const userSchema = new mongoose.Schema({
   telegramId: { type: Number, required: true, unique: true, index: true },
@@ -56,6 +56,8 @@ const orderSchema = new mongoose.Schema({
   items: [
     {
       productId: String,
+⁰⁰⁰0p
+      
       productName: String,
       variantIndex: Number,
       variantName: String,
