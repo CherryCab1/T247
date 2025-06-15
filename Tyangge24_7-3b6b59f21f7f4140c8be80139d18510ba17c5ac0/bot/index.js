@@ -16,6 +16,7 @@ import { showProducts, viewProduct as showProductDetails } from "./handlers/prod
 import { addToCart, showCart, handleAddMore } from "./handlers/cart.js"
 import * as checkout from "./handlers/checkout.js"
 import { User } from "../models/index.js"
+import { PendingOrderApproval } from "../models/index.js";
 
 // 👑 Bot instance
 export const bot = new Bot(config.BOT_TOKEN)
