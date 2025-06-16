@@ -17,6 +17,9 @@ import * as checkout from "./handlers/checkout.js";
 import { User } from "../models/index.js";
 import { setupAdminCallbacks } from "./handlers/notifyAdmin.js";
 
+// 🚩 Add this import for payment approval!
+import { handleAdminApproval } from "../handlers/adminApproveHandler.js";
+
 // 👑 Bot instance
 export const bot = new Bot(config.BOT_TOKEN);
 
@@ -29,6 +32,10 @@ bot.command("checkout", checkout.handleCheckout);
 
 // ✅ ORDER Approval Flow (for orders with MongoDB _id)
 setupAdminCallbacks(bot);
+
+// ✅ PAYMENT Approval Flow (for Xendit invoice)
+// Register this before your user approval flow to avoid overlap
+bot.callbackQuery(/approve_(.+)/, handleAdminApproval);
 
 // ✅ USER Approval Flow (for approving/denying new users)
 bot.callbackQuery(/approve_(\d+)/, handleApproval);
