@@ -15,7 +15,7 @@ validateEnv();
 
 const app = express();
 
-// Security
+// Security headers
 app.use(
   helmet({
     contentSecurityPolicy: false,
