@@ -1,6 +1,6 @@
 import axios from "axios";
-import { bot } from "../bot/index.js";
-import { Order, PendingOrderApproval } from "../models/index.js";
+import { bot } from "../index.js";
+import { Order, PendingOrderApproval } from "../../models/index.js";
 
 /**
  * Approve a pending order, move it to Orders, create Xendit invoice, and send payment link.
