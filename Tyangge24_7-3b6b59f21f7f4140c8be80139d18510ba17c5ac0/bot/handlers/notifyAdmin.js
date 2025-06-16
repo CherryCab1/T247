@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import { config } from "../../config/env.js";
 import { PendingOrderApproval, Order } from "../../models/index.js";
-import { createXenditPayment } from "../services/xendit.js";
+import { createXenditInvoice } from "../services/xendit.js";
 import { reverseGeocode } from "../services/geocode.js";
 
 // Notify admin with approve/decline buttons using PendingOrderApproval._id
@@ -74,8 +74,13 @@ export function setupAdminCallbacks(bot) {
       await PendingOrderApproval.findByIdAndDelete(pendingId);
 
       // Create payment and send to user
-      const payment = await createXenditPayment(newOrder);
-      const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.invoice_url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
+      const payment = await createXenditInvoice(
+        newOrder.total,
+        newOrder.customerInfo?.name,
+        newOrder.customerInfo?.contact,
+        newOrder.telegramId
+      );
+      const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
       try {
         await bot.api.sendMessage(userId, paymentText, {
