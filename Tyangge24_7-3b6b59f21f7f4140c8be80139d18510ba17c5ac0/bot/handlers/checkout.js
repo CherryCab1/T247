@@ -5,7 +5,8 @@ import { reverseGeocode } from "../services/geocode.js";
 import { bot } from "../index.js"; // Import the bot instance
 import { generateOrderNumber } from "../utils/generateOrderNumber.js";
 
-export const SHOP_LOCATION = { lat: 14.5995, lng: 120.9842 };
+
+export const SHOP_LOCATION = { lat: 10.771029, lng: 122.536763 };
 export const loadingLoops = new Map();
 
 export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
