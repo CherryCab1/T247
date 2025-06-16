@@ -18,7 +18,7 @@ import { User } from "../models/index.js";
 import { setupAdminCallbacks } from "./handlers/notifyAdmin.js";
 
 // 🚩 Add this import for payment approval!
-import { handleAdminApproval } from "../handlers/adminApproveHandler.js";
+import { handleAdminApproval } from "./handlers/adminApproveHandler.js";
 
 // 👑 Bot instance
 export const bot = new Bot(config.BOT_TOKEN);
