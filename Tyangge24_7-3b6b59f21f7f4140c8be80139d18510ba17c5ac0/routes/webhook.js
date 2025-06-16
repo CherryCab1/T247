@@ -4,7 +4,6 @@ import { bot } from "../bot/index.js";
 
 const router = express.Router();
 
-// POST /webhook/xendit
 router.post("/xendit", async (req, res) => {
   const event = req.body;
   console.log("🔔 Xendit webhook payload:", JSON.stringify(event, null, 2));
@@ -16,7 +15,7 @@ router.post("/xendit", async (req, res) => {
 
     if (!external_id || !status) return res.sendStatus(400);
 
-    // Find order using orderNumber as external_id (adjust if you use something else)
+    // Find order using orderNumber as external_id
     const order = await Order.findOne({ orderNumber: external_id });
     if (!order) return res.sendStatus(404);
 
