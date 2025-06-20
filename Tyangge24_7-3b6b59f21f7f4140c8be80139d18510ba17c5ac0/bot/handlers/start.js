@@ -1,6 +1,6 @@
 import { InlineKeyboard } from "grammy"
 import { User } from "../../models/index.js"
-import { showWelcomeMessage } from "./start.js" // make sure this import matches your file structure
+import { showWelcomeMessage } from "./start.js" // make sure path matches
 
 export async function handleStart(ctx) {
   const userId = ctx.from.id
@@ -67,6 +67,7 @@ export async function handleStart(ctx) {
       "• 💸 Once nag-order ka, di na pwede iurong — sureball ha!\n" +
       "• 🎁 Delivery discreet, walang makaamoy, pang-Kween lang!\n" +
       "• 📆 Approvals reset every 24 hrs — wag tamad!\n" +
+      "• ⚡ *Indi pwede ang gadali*, besh — chill ka lang, let's take our time! 🐢\n" +
       "• 👑 Have fun, shop like a diva — at bawal ang pa-suplada! 💅\n\n" +
       "Kung swak sayo ni, beshie — click Agree sa baba! 💖",
       { reply_markup: termsKeyboard }
