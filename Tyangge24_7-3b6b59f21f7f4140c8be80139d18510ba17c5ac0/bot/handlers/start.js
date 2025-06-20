@@ -1,6 +1,6 @@
 import { InlineKeyboard } from "grammy"
 import { User } from "../../models/index.js"
-import { showWelcomeMessage } from "./handleStart.js"
+import { showWelcomeMessage } from "./start.js" // make sure this import matches your file structure
 
 export async function handleStart(ctx) {
   const userId = ctx.from.id
@@ -20,7 +20,7 @@ export async function handleStart(ctx) {
       return showWelcomeMessage(ctx)
     }
 
-    // 🎭 Loading animation
+    // 🎭 Fun loading animation
     const loadingMsg = await ctx.reply(
       "🔮 Ginalantaw anay ang kapalaran mo, beshy... hang tight!"
     )
@@ -50,7 +50,7 @@ export async function handleStart(ctx) {
       await user.save()
     }
 
-    // 💬 Terms & Age Agreement with sassy tone
+    // 💬 Terms & Conditions + Age Confirmation
     const termsKeyboard = new InlineKeyboard().text(
       "✅ Oo, Agree na ako + 18 pataas!",
       "agree_terms"
@@ -61,14 +61,14 @@ export async function handleStart(ctx) {
       loadingMsg.message_id,
       "⚠️ *Terms & Kondisyon ni Mare* ⚠️\n\n" +
       "• 🔞 Bawal ang shungangels — 18+ only ha!\n" +
-      "• ✨ By clicking Agree, swak ka sa all chika at policies dito.\n" +
+      "• ✨ By clicking Agree, swak ka sa all chika & policies dito.\n" +
       "• 💖 Treat everyone like queens — bawal bastos, okay?\n" +
       "• 🔐 Privacy is key, mare. Ang chismis mo safe sa amin!\n" +
       "• 💸 Once nag-order ka, di na pwede iurong — sureball ha!\n" +
-      "• 🎁 Delivery discreet, walang makaamoy na chika, pang-Kween lang!\n" +
-      "• 📆 Approvals reset every 24 hrs — don’t be tamad!\n" +
+      "• 🎁 Delivery discreet, walang makaamoy, pang-Kween lang!\n" +
+      "• 📆 Approvals reset every 24 hrs — wag tamad!\n" +
       "• 👑 Have fun, shop like a diva — at bawal ang pa-suplada! 💅\n\n" +
-      "Kung swak sayo ni, beshie — click ang Agree sa baba! 💖",
+      "Kung swak sayo ni, beshie — click Agree sa baba! 💖",
       { reply_markup: termsKeyboard }
     )
   } catch (err) {
