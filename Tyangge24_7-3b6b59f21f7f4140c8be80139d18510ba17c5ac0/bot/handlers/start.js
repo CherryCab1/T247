@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy"
 import { User } from "../../models/index.js"
-import { showWelcomeMessage } from "./start.js" // make sure path matches
 
+// 🎉 Main /start handler
 export async function handleStart(ctx) {
   const userId = ctx.from.id
   const username = ctx.from.username || ctx.from.first_name
@@ -20,7 +20,7 @@ export async function handleStart(ctx) {
       return showWelcomeMessage(ctx)
     }
 
-    // 🎭 Fun loading animation
+    // 🎭 Loading animation
     const loadingMsg = await ctx.reply(
       "🔮 Ginalantaw anay ang kapalaran mo, beshy... hang tight!"
     )
@@ -50,7 +50,7 @@ export async function handleStart(ctx) {
       await user.save()
     }
 
-    // 💬 Terms & Conditions + Age Confirmation
+    // 💬 Terms & Age Agreement
     const termsKeyboard = new InlineKeyboard().text(
       "✅ Oo, Agree na ako + 18 pataas!",
       "agree_terms"
@@ -67,7 +67,7 @@ export async function handleStart(ctx) {
       "• 💸 Once nag-order ka, di na pwede iurong — sureball ha!\n" +
       "• 🎁 Delivery discreet, walang makaamoy, pang-Kween lang!\n" +
       "• 📆 Approvals reset every 24 hrs — wag tamad!\n" +
-      "• ⚡ *Indi pwede ang gadali*, besh — chill ka lang, let's take our time! 🐢\n" +
+      "• ⚡ *Indi pwede ang gadali*, besh — chill ka lang, take your time! 🐢\n" +
       "• 👑 Have fun, shop like a diva — at bawal ang pa-suplada! 💅\n\n" +
       "Kung swak sayo ni, beshie — click Agree sa baba! 💖",
       { reply_markup: termsKeyboard }
@@ -77,5 +77,31 @@ export async function handleStart(ctx) {
     await ctx.reply(
       "Waaah! Nagsunggod ang sistema, mare. Subukan ulit mamaya ha! 💖"
     )
+  }
+}
+
+// 🎉 Welcome message function
+export async function showWelcomeMessage(ctx) {
+  const welcomeMsg = `🌈 *WELCAM WELCAM SA TYANGGE 24/7!* 🌈
+
+Teh, ang tadhana gid naglapit sa imo diri! 💖
+
+Diri lang sa among kaldereta makit-an ang:
+🔥 *Totally Tuhog-tuhog Essentials*
+💦 *Discreet delivery with matching whisper*
+⚡ *Same-day chika, walang arte*
+👑 *VIP customer service, pang-Kween lang!*
+
+Ready ka na mag-shop, beshie? Dali na, click click na! 💅`
+
+  const keyboard = new InlineKeyboard()
+    .text("🛍️ Shopping", "start_shopping").row()
+    .text("🛒 Cart", "view_cart").row()
+    .text("📦 Mga Orders Ko", "my_orders")
+
+  if (ctx.callbackQuery) {
+    await ctx.editMessageText(welcomeMsg, { reply_markup: keyboard })
+  } else {
+    await ctx.reply(welcomeMsg, { reply_markup: keyboard })
   }
 }
