@@ -1,95 +1,72 @@
 import { Bot, GrammyError, HttpError } from "grammy";
 import { config } from "../config/env.js";
-import { logInteraction, checkUserApproval } from "./middleware/auth.js";
+import { logInteraction } from "./middleware/auth.js"; // Keep log if you still want interaction logging
 import { handleStart } from "./handlers/start.js";
-import {
-  handleApproval,
-  handleDenial,
-  handleTermsAgreement,
-  handleTermsDisagreement,
-  handleAgeConfirmation,
-  handleUnderAge,
-} from "./handlers/approval.js";
+import { handleTermsAgreement, handleTermsDisagreement, handleAgeConfirmation, handleUnderAge } from "./handlers/approval.js";
 import { showCategories } from "./handlers/categories.js";
 import { showProducts, viewProduct as showProductDetails } from "./handlers/products.js";
 import { addToCart, showCart, handleAddMore } from "./handlers/cart.js";
 import * as checkout from "./handlers/checkout.js";
 import { User } from "../models/index.js";
-import { setupAdminCallbacks } from "./handlers/notifyAdmin.js";
 
-// 🚩 Add this import for payment approval!
-import { handleAdminApproval } from "./handlers/adminApproveHandler.js";
-
-// 👑 Bot instance
+// 🚀 Create bot
 export const bot = new Bot(config.BOT_TOKEN);
 
-// 🌈 Global middleware
+// 🌈 Global logger
 bot.use(logInteraction);
 
-// 💌 Commands
+// 💌 Entry
 bot.command("start", handleStart);
-bot.command("checkout", checkout.handleCheckout);
 
-// ✅ ORDER Approval Flow (for orders with MongoDB _id)
-setupAdminCallbacks(bot);
-
-// ✅ PAYMENT Approval Flow (for Xendit invoice)
-// Register this before your user approval flow to avoid overlap
-bot.callbackQuery(/approve_(.+)/, handleAdminApproval);
-
-// ✅ USER Approval Flow (for approving/denying new users)
-bot.callbackQuery(/approve_(\d+)/, handleApproval);
-bot.callbackQuery(/deny_(\d+)/, handleDenial);
+// ✅ TERMS & AGE confirmation routes
 bot.callbackQuery("agree_terms", handleTermsAgreement);
 bot.callbackQuery("disagree_terms", handleTermsDisagreement);
 bot.callbackQuery("confirm_age", handleAgeConfirmation);
 bot.callbackQuery("under_age", handleUnderAge);
 
-// 🛍️ Shopping Flow
-bot.callbackQuery("start_shopping", checkUserApproval, showCategories);
-bot.callbackQuery("back_to_menu", checkUserApproval, handleStart);
-
 // 🧂 Categories
-bot.callbackQuery("category_rings", checkUserApproval, (ctx) => showProducts(ctx, "rings"));
-bot.callbackQuery("category_lubes", checkUserApproval, (ctx) => showProducts(ctx, "lubes"));
-bot.callbackQuery("category_enhancers", checkUserApproval, (ctx) => showProducts(ctx, "enhancers"));
-bot.callbackQuery("category_accessories", checkUserApproval, (ctx) => showProducts(ctx, "accessories"));
-bot.callbackQuery("category_essentials", checkUserApproval, (ctx) => showProducts(ctx, "essentials"));
+bot.callbackQuery("category_rings", (ctx) => showProducts(ctx, "rings"));
+bot.callbackQuery("category_lubes", (ctx) => showProducts(ctx, "lubes"));
+bot.callbackQuery("category_enhancers", (ctx) => showProducts(ctx, "enhancers"));
+bot.callbackQuery("category_accessories", (ctx) => showProducts(ctx, "accessories"));
+bot.callbackQuery("category_essentials", (ctx) => showProducts(ctx, "essentials"));
+bot.callbackQuery("start_shopping", showCategories);
+bot.callbackQuery("back_to_menu", handleStart); // Return to main menu if needed
 
-// 🛍 Product Details
-bot.callbackQuery(/product_(.+)/, checkUserApproval, (ctx) => {
+// 🛍 Products
+bot.callbackQuery(/product_(.+)/, (ctx) => {
   const productId = ctx.match[1];
   return showProductDetails(ctx, productId);
 });
 
-// 🛒 Cart Actions
-bot.callbackQuery(/variant_(.+)_(\d+)/, checkUserApproval, (ctx) => {
+// 🧺 Cart
+bot.callbackQuery(/variant_(.+)_(\d+)/, (ctx) => {
   const productId = ctx.match[1];
   const variantIndex = Number.parseInt(ctx.match[2]);
   return addToCart(ctx, productId, variantIndex);
 });
-bot.callbackQuery(/add_to_cart_(.+)/, checkUserApproval, (ctx) => {
+bot.callbackQuery(/add_to_cart_(.+)/, (ctx) => {
   const productId = ctx.match[1];
   return addToCart(ctx, productId);
 });
-
-bot.callbackQuery("view_cart", checkUserApproval, showCart);
-bot.callbackQuery("clear_cart", checkUserApproval, async (ctx) => {
+bot.callbackQuery("view_cart", showCart);
+bot.callbackQuery("clear_cart", async (ctx) => {
   const userId = ctx.from.id;
   await User.updateOne({ telegramId: userId }, { cart: [] });
-  await ctx.answerCallbackQuery("🧺 Cart cleared! Luwag na utang!");
+  await ctx.answerCallbackQuery("🧺 Cart cleared!");
   await showCart(ctx);
 });
+bot.callbackQuery("add_more", handleAddMore);
 
-bot.callbackQuery("add_more", checkUserApproval, handleAddMore);
-bot.callbackQuery("checkout", checkUserApproval, checkout.handleCheckout);
+// 💸 Checkout
+bot.command("checkout", checkout.handleCheckout);
+bot.callbackQuery("checkout", checkout.handleCheckout);
 
-// 📩 Checkout messages & callbacks
+// 💬 Checkout messages & callback handling
 bot.on("message", async (ctx) => {
   const handled = await checkout.handleCheckoutMessage(ctx);
   if (handled) return;
 });
-
 bot.on("callback_query:data", async (ctx) => {
   const handled = await checkout.handleCheckoutCallback(ctx);
   if (handled) return;
@@ -109,16 +86,16 @@ bot.catch((err) => {
   }
 });
 
-// 🚀 Bot launcher
+// 🚀 Start bot
 export async function initializeBot() {
   try {
     await bot.init();
-    console.log("🤖 Bot initialized na mga dayyy!");
+    console.log("🤖 Bot initialized successfully!");
     const me = await bot.api.getMe();
-    console.log(`👑 Connected as: @${me.username} — certified kikay!`);
+    console.log(`👑 Connected as: @${me.username}`);
     return true;
   } catch (error) {
-    console.error("❌ Failed to initialize bot, shuta ka Gurl:", error);
+    console.error("❌ Failed to init bot:", error);
     return false;
   }
 }
