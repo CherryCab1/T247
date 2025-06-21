@@ -4,13 +4,13 @@ import { PendingOrderApproval, Order } from "../../models/index.js";
 import { createXenditInvoice } from "../services/xendit.js";
 import { reverseGeocode } from "../services/geocode.js";
 
-// Notify admin with approve/decline buttons using PendingOrderApproval._id
+// ✅ Notify admin with approve/decline buttons
 export async function notifyAdmin(bot, pendingOrder) {
   const keyboard = new InlineKeyboard()
     .text("✅ Approve", `approve_${pendingOrder._id}`)
     .text("❌ Decline", `decline_${pendingOrder._id}`);
 
-  // Try to resolve address with reverse geocode if possible
+  // Try resolving location
   let resolvedAddress = pendingOrder.customerInfo?.location?.resolvedAddress;
   if (
     (!resolvedAddress || resolvedAddress === "📍 Unknown address") &&
@@ -22,7 +22,7 @@ export async function notifyAdmin(bot, pendingOrder) {
         pendingOrder.customerInfo.location.latitude,
         pendingOrder.customerInfo.location.longitude
       );
-    } catch (err) {
+    } catch {
       resolvedAddress = "📍 [Location shared lang]";
     }
   }
@@ -37,29 +37,21 @@ export async function notifyAdmin(bot, pendingOrder) {
 💰 Total: ₱${pendingOrder.total}
 `;
 
-  await bot.api.sendMessage(
-    config.ADMIN_CHAT_ID,
-    summary,
-    {
-      parse_mode: "HTML",
-      reply_markup: keyboard,
-    }
-  );
+  await bot.api.sendMessage(config.ADMIN_CHAT_ID, summary, {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
 }
 
-// Setup admin callback handlers for order approval
-export function setupAdminCallbacks(bot) {
+// ✅ Register approval/decline handler
+export function registerOrderApprovalHandlers(bot) {
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
     const [, action, pendingId] = ctx.match;
     const pendingOrder = await PendingOrderApproval.findById(pendingId);
-
     if (!pendingOrder) {
       try {
-        await ctx.answerCallbackQuery({
-          text: "Pending order not found!",
-          show_alert: true,
-        });
-      } catch (err) {}
+        await ctx.answerCallbackQuery({ text: "Pending order not found!", show_alert: true });
+      } catch {}
       return;
     }
 
@@ -73,33 +65,28 @@ export function setupAdminCallbacks(bot) {
       await newOrder.save();
       await PendingOrderApproval.findByIdAndDelete(pendingId);
 
-      // Create payment and send to user
       const payment = await createXenditInvoice(
         newOrder.total,
         newOrder.customerInfo?.name,
         newOrder.customerInfo?.contact,
         newOrder.telegramId
       );
+
       const paymentText = `🌈 <b>Confirmed ang order mo, dai!</b>\n\nI-check mo QR or link below para makabayad ka na:\n\n🔗 ${payment.url}\n\nPag nakabayad ka na, send mo lang proof dito sa bot. 💌`;
 
       try {
-        await bot.api.sendMessage(userId, paymentText, {
-          parse_mode: "HTML",
-        });
+        await bot.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
       } catch (err) {
         console.error("❌ Failed to send payment message:", err);
       }
 
       try {
         await ctx.editMessageText("✅ Order approved and payment sent to customer!");
-      } catch (err) {
-        // Ignore if message already edited
-      }
+      } catch {}
     }
 
     if (action === "decline") {
       await PendingOrderApproval.findByIdAndDelete(pendingId);
-
       try {
         await bot.api.sendMessage(
           userId,
@@ -111,16 +98,11 @@ export function setupAdminCallbacks(bot) {
 
       try {
         await ctx.editMessageText("🚫 Order declined.");
-      } catch (err) {
-        // Ignore if message already edited
-      }
+      } catch {}
     }
 
-    // Always try to answer the callback, but ignore timeout errors
     try {
       await ctx.answerCallbackQuery();
-    } catch (err) {
-      // Ignore all errors (mainly "query is too old")
-    }
+    } catch {}
   });
 }
