@@ -10,7 +10,6 @@ export async function notifyAdmin(bot, pendingOrder) {
     .text("✅ Approve", `approve_${pendingOrder._id}`)
     .text("❌ Decline", `decline_${pendingOrder._id}`);
 
-  // Try resolving location
   let resolvedAddress = pendingOrder.customerInfo?.location?.resolvedAddress;
   if (
     (!resolvedAddress || resolvedAddress === "📍 Unknown address") &&
@@ -37,6 +36,7 @@ export async function notifyAdmin(bot, pendingOrder) {
 💰 Total: ₱${pendingOrder.total}
 `;
 
+  console.log("📤 Sending approval message to admin...");
   await bot.api.sendMessage(config.ADMIN_CHAT_ID, summary, {
     parse_mode: "HTML",
     reply_markup: keyboard,
@@ -45,10 +45,18 @@ export async function notifyAdmin(bot, pendingOrder) {
 
 // ✅ Register approval/decline handler
 export function registerOrderApprovalHandlers(bot) {
+  console.log("🛠️ Registering approve/decline callback handler...");
+
   bot.callbackQuery(/^(approve|decline)_(.*)$/, async (ctx) => {
+    console.log("🧲 Callback matched:", ctx.callbackQuery.data);
+
     const [, action, pendingId] = ctx.match;
+    console.log("📦 Action:", action);
+    console.log("🆔 Pending ID:", pendingId);
+
     const pendingOrder = await PendingOrderApproval.findById(pendingId);
     if (!pendingOrder) {
+      console.warn("⚠️ Pending order not found.");
       try {
         await ctx.answerCallbackQuery({ text: "Pending order not found!", show_alert: true });
       } catch {}
@@ -58,6 +66,7 @@ export function registerOrderApprovalHandlers(bot) {
     const userId = pendingOrder.telegramId;
 
     if (action === "approve") {
+      console.log("✅ Approving order...");
       const newOrder = new Order({
         ...pendingOrder.toObject(),
         status: "awaiting_payment",
@@ -76,6 +85,7 @@ export function registerOrderApprovalHandlers(bot) {
 
       try {
         await bot.api.sendMessage(userId, paymentText, { parse_mode: "HTML" });
+        console.log("📨 Payment link sent to user.");
       } catch (err) {
         console.error("❌ Failed to send payment message:", err);
       }
@@ -86,7 +96,9 @@ export function registerOrderApprovalHandlers(bot) {
     }
 
     if (action === "decline") {
+      console.log("🚫 Declining order...");
       await PendingOrderApproval.findByIdAndDelete(pendingId);
+
       try {
         await bot.api.sendMessage(
           userId,
