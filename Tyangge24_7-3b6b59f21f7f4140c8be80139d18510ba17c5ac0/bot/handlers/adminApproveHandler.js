@@ -1,6 +1,7 @@
 import axios from "axios";
 import { bot } from "../index.js";
-import { Order, PendingOrderApproval } from "../../models/index.js";
+import { Order, PendingOrderApproval, PaymentTransaction } from "../../models/index.js";
+import { createXenditQRPHInvoice } from "./xenditQRPH.js"; // Make sure this exists
 
 export async function handleAdminApproval(ctx) {
   const orderId = ctx.match[1];
@@ -12,38 +13,33 @@ export async function handleAdminApproval(ctx) {
   await order.save();
   await pendingOrder.deleteOne();
 
-  // Build payload
-  const invoicePayload = {
-    external_id: String(order.orderNumber),
-    amount: Number(order.total),
-    description: `Order #${order.orderNumber}`,
-    // Do NOT include payer_email unless you have a real value
-  };
-
-  console.log("Sending invoice to Xendit:", invoicePayload);
-
-  const xenditApiKey = process.env.XENDIT_API_KEY;
-  let invoiceRes;
+  // ✅ Create QRPH invoice
   try {
-    invoiceRes = await axios.post(
-      "https://api.xendit.co/v2/invoices",
-      invoicePayload,
-      {
-        auth: {
-          username: xenditApiKey,
-          password: "",
-        },
-      }
-    );
-  } catch (err) {
-    console.error("❌ Xendit invoice creation failed:", err?.response?.data || err.message);
-    return ctx.reply("Failed to create payment invoice. Please try again or check Xendit dashboard.");
-  }
+    const qrphInvoice = await createXenditQRPHInvoice(order.total, order.customerInfo.name, order.customerInfo.contact, order.telegramId);
 
-  const invoiceUrl = invoiceRes.data.invoice_url;
-  await bot.api.sendMessage(
-    order.telegramId,
-    `💸 Please pay for your order using this secure link:\n${invoiceUrl}`
-  );
-  await ctx.reply("Payment link sent to customer!");
+    // Save QRPH invoice to PaymentTransaction
+    await PaymentTransaction.create({
+      orderId: order._id,
+      type: "qrph",
+      status: "pending",
+      amount: order.total,
+      qrCodeUrl: qrphInvoice.url,
+      xenditInvoiceId: qrphInvoice.xenditInvoiceId,
+    });
+
+    await bot.api.sendPhoto(order.telegramId, qrphInvoice.qrCodeUrl, {
+      caption: `💸 *Scan this QR code to pay via QRPH!*
+
+*Order #${order.orderNumber}*
+₱${order.total}
+
+After paying, we’ll notify you once confirmed. Thank you, beshie! 💖`,
+      parse_mode: "Markdown",
+    });
+
+    await ctx.reply("QRPH payment QR sent to customer!");
+  } catch (err) {
+    console.error("❌ Failed to create QRPH invoice:", err?.response?.data || err.message);
+    return ctx.reply("Failed to create payment QR. Please check Xendit dashboard or try again.");
+  }
 }
