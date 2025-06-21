@@ -14,7 +14,7 @@ import { showCategories } from "./handlers/categories.js";
 import { showProducts, viewProduct as showProductDetails } from "./handlers/products.js";
 import { addToCart, showCart, handleAddMore } from "./handlers/cart.js";
 import * as checkout from "./handlers/checkout.js";
-import { handleAdminApproval } from "./handlers/handleAdminApproval.js";
+import { handleAdminApproval } from "./handlers/adminApproveHandler.js";
 
 // 🛠️ Models
 import { User, PendingOrderApproval } from "../models/index.js";
