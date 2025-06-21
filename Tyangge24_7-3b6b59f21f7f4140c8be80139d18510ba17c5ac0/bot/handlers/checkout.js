@@ -2,9 +2,8 @@ import { Keyboard } from "grammy";
 import { User, PendingOrderApproval } from "../../models/index.js";
 import { notifyAdmin } from "./notifyAdmin.js";
 import { reverseGeocode } from "../services/geocode.js";
-import { bot } from "../index.js"; // Import the bot instance
+import { bot } from "../index.js";
 import { generateOrderNumber } from "../utils/generateOrderNumber.js";
-
 
 export const SHOP_LOCATION = { lat: 10.771029, lng: 122.536763 };
 export const loadingLoops = new Map();
@@ -233,7 +232,6 @@ export async function handleCheckoutCallback(ctx) {
       paymentStatus: "pending",
     };
 
-    // Save only to PendingOrderApproval collection
     const pending = new PendingOrderApproval(orderData);
     await pending.save();
 
