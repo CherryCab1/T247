@@ -1,7 +1,7 @@
 import axios from "axios";
 import { bot } from "../index.js";
 import { Order, PendingOrderApproval, PaymentTransaction } from "../../models/index.js";
-import { createXenditQRPHInvoice } from "./xenditQRPH.js"; // Make sure this exists
+import { createXenditQRPHInvoice } from "../services/xendit.js"; // Make sure this exists
 
 export async function handleAdminApproval(ctx) {
   const orderId = ctx.match[1];
