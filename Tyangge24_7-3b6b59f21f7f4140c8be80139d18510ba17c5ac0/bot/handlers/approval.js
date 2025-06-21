@@ -96,68 +96,75 @@ async function showEntranceAnimation(api, chatId) {
 }
 
 async function showTermsAndConditions(api, chatId) {
-  const terms = `📋 TYANGGE 24/7 TERMS & CHAROTDITIONS
+  const terms = `📜 *TYANGGE 24/7 TERMS & CHAKANESS*
 
-Beshie, before ka mag-shopping2x dira, basaha anay ni ha! 💅
+Beshie, before ka mag-rampa kag magpa-checkout, make sure nabasa mo ni ha — para iwas chaka at gulo! 💅
 
-✅ MGA RULES NATON:
-• 18+ lang pwede diri (minor de edad? out ka teh!)
-• Super discreet packaging - promise!
-• Wala return ha, hygiene-hygiene gid ni!
-• Bayad anay before delivery, char!
-• Respeto sa mga staff - mga Reyna ina sila!
+✅ *DA RULES OF GLAMOUR:*
+• 🔞 18+ lang — kung minor ka pa teh, balik ka next rebirth!
+• 📦 Discreet na discreet ang packaging, swear!
+• 🚫 No return, no exchange — hygiene yan teh!
+• 💸 Pay before joy — bayad anay bago kalipay, ganern!
+• 👑 Respetar sa staff, kay mga certified Reyna sila!
 
-🚫 INDI PWEDENG:
-• I-chika ang mga produkto sa iba (secret lang naton ni!)
-• Mag screenshot-screenshot ha!
-• Mag bastos sa staff (hoy, bawal!)
-• Magpalibre libre - indi ini charity bes!
+🚫 *Bawal na Kabobohan:*
+• Chismisan ang mga binakal? Ayyy baka gusto mo ma-ban! 🤭
+• Screenshot mo pa talaga? Sssst! Pang-self lang ‘to!
+• Bastusan? Block agad yan, mare!
+• Feeling libre? CHAROT ka bes, negosyo ini!
 
-💰 PAYMENT:
-• GCash, PayMaya, Bank Transfer
-• No COD-cod-an ha!
-• Full bayad lang, para smooth!
+💳 *Bayad Modes:*
+• GCash, Maya, Bank Transfer — walang palusot, teh!
+• No COD-COD-an, sorry not sorry!
+• Buo ang bayad para walay issue, diba?
 
-🚚 DELIVERY:
-• May same-day delivery!
-• Pwede pick-up!
-• Discreet, as always!
+🚚 *Delivery Realness:*
+• May same-day kung bet mo na now na!
+• Pwede pick-up kung gusto mo makita si Kuya Rider 🙈
+• Doble lock, triple sealed — WALANG MAKAKAAMOY!
 
-Okay ka na sini, beshie? Chika mo na!`;
+Teh, kung gets mo na ‘to — let’s go na sa next level! ✨`
 
   const keyboard = new InlineKeyboard()
-    .text("✅ Agree (Sige na nga!)", "agree_terms")
-    .text("❌ Disagree (Hindi ako ready)", "disagree_terms");
+    .text("✅ Agree (Push na 'to!)", "agree_terms")
+    .text("❌ Disagree (Wait lang, mare)", "disagree_terms");
 
-  await api.sendMessage(chatId, terms, { reply_markup: keyboard });
+  await api.sendMessage(chatId, terms, {
+    parse_mode: "Markdown",
+    reply_markup: keyboard,
+  });
 }
 
 export async function handleTermsAgreement(ctx) {
-  await ctx.editMessageText("✅ Ay sus, salamat gid besh! Sunod na ni, age verification ta... 🔞");
+  await ctx.editMessageText("✅ Boom! Bongga ka na besh, sunod na: *AGE VERIFICATION*. 🔞", { parse_mode: "Markdown" });
   await showAgeVerification(ctx.api, ctx.chat.id);
 }
 
 export async function handleTermsDisagreement(ctx) {
-  await ctx.editMessageText("😔 Ay ambot bes, indi pa gid sya ready. Balik lang kung sure ka na gid ha! 💔");
+  await ctx.editMessageText("😔 Ay ambot teh, indi pa sya ready. Come back kung handa ka na maging fabulous! 💔");
 }
 
 export async function showAgeVerification(api, chatId) {
-  const ageVerification = `🔞 AGE VERIFICATION GANI...
+  const ageVerification = `🔞 *AGE VERIFICATION CHENELYN*
 
-Beshie, kailangan lang namon i-make sure na 18+ ka na gid ha!
+Beshie, bago kita papasukin sa beki dimension, kailangan lang namin ma-sure na *legal* ka na gid. 🤓
 
-Ari sa aton tindahan, mga kabuangan for adults lang ni. By saying "I'm 18+", ginapakilala mo nga:
-• Legal age ka na gid, promise!
-• Gets mo gid kung ano ni nga items
-• Kaya mo ang aton *Fabulous Energy*! 💅
+By saying you’re 18+:
+• ✅ You confirm na of legal age ka — hindi bata-bata lang!
+• ✅ You understand na mga kabuangan para sa matatapang lang ini!
+• ✅ Kaya mo ang *Full Power Beki Energy* — walang iiyak ah!
 
-18+ ka na gid bala, besh?`;
+So ano, game ka na?
+18+ ka na gid bala, beh? Type tap lang below kung ready na ang beksiness mo! 💖`
 
   const keyboard = new InlineKeyboard()
-    .text("✅ I'm 18+ (Oo naman!)", "confirm_age")
-    .text("❌ I'm under 18 (Hindi pa ako ready)", "under_age");
+    .text("✅ I'm 18+ (Go na go!)", "confirm_age")
+    .text("❌ I'm under 18 (Back muna ako)", "under_age");
 
-  await api.sendMessage(chatId, ageVerification, { reply_markup: keyboard });
+  await api.sendMessage(chatId, ageVerification, {
+    parse_mode: "Markdown",
+    reply_markup: keyboard,
+  });
 }
 
 export async function handleAgeConfirmation(ctx) {
@@ -167,5 +174,5 @@ export async function handleAgeConfirmation(ctx) {
 }
 
 export async function handleUnderAge(ctx) {
-  await ctx.editMessageText("😔 Sorry beshie ha, balik lang kung legal age ka na. Diri lang kami ya naga-hulat! 💖");
+  await ctx.editMessageText("😔 Ay sad. Kung indi ka pa 18, balik lang kung legal na. Kami ya diri lang naga-hulat sa imo pagbalik, promise! 💖");
 }
