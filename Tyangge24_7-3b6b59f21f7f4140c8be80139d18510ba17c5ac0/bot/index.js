@@ -74,13 +74,8 @@ bot.callbackQuery("clear_cart", async (ctx) => {
 bot.command("checkout", checkout.handleCheckout);
 bot.callbackQuery("checkout", checkout.handleCheckout);
 
-// 💬 Checkout message & confirm button
-bot.on("message", async (ctx) => {
-  const handled = await checkout.handleCheckoutMessage(ctx);
-  if (handled) return;
-});
-
-bot.on("callback_query:data", async (ctx) => {
+// ✅ More targeted handler for checkout callbacks
+bot.callbackQuery(/^checkout_/, async (ctx) => {
   const handled = await checkout.handleCheckoutCallback(ctx);
   if (handled) return;
 });
