@@ -14,10 +14,10 @@ import { showCategories } from "./handlers/categories.js";
 import { showProducts, viewProduct as showProductDetails } from "./handlers/products.js";
 import { addToCart, showCart, handleAddMore } from "./handlers/cart.js";
 import * as checkout from "./handlers/checkout.js";
-import { handleAdminApproval } from "./handlers/adminApproveHandler.js";
+import { registerOrderApprovalHandlers } from "./handlers/notifyAdmin.js";
 
 // 🛠️ Models
-import { User, PendingOrderApproval } from "../models/index.js";
+import { User } from "../models/index.js";
 
 // 🚀 Create bot
 export const bot = new Bot(config.BOT_TOKEN);
@@ -85,23 +85,8 @@ bot.on("callback_query:data", async (ctx) => {
   if (handled) return;
 });
 
-// ✅ Admin approval logic
-bot.callbackQuery(/^approve_order_(.+)$/, handleAdminApproval);
-
-bot.callbackQuery(/^reject_order_(.+)$/, async (ctx) => {
-  const orderId = ctx.match[1];
-  const order = await PendingOrderApproval.findById(orderId);
-  if (!order) return ctx.reply("Order not found or already handled.");
-
-  await bot.api.sendMessage(
-    order.telegramId,
-    `❌ Your order (#${order.orderNumber}) was not approved. You can try again anytime.`
-  );
-
-  await order.deleteOne();
-  await ctx.reply("Order rejected and customer notified.");
-  await ctx.answerCallbackQuery("Order rejected");
-});
+// ✅ Admin order approval system (from notifyAdmin.js)
+registerOrderApprovalHandlers(bot);
 
 // 🧯 Error handler
 bot.catch((err) => {
