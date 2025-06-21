@@ -176,3 +176,5 @@ export async function handleAgeConfirmation(ctx) {
 export async function handleUnderAge(ctx) {
   await ctx.editMessageText("😔 Ay sad. Kung indi ka pa 18, balik lang kung legal na. Kami ya diri lang naga-hulat sa imo pagbalik, promise! 💖");
 }
+
+export { showTermsAndConditions };
