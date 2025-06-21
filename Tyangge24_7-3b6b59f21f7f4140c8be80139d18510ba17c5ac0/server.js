@@ -69,6 +69,11 @@ app.use((err, req, res, next) => {
   });
 });
 
+// 🧪 Health check route for uptime monitors and cron jobs
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // Graceful shutdown
 async function gracefulShutdown(signal) {
   console.log(`\n🛑 Received ${signal}. Shutting down...`);
